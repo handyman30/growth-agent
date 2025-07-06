@@ -144,6 +144,17 @@ app.get('/api/system-status', async (req, res) => {
   }
 });
 
+// API endpoint for error logs
+app.get('/api/errors', async (req, res) => {
+  try {
+    const fs = await import('fs/promises');
+    const errorLog = await fs.readFile('error-log.json', 'utf-8').catch(() => '{}');
+    res.json(JSON.parse(errorLog));
+  } catch (error) {
+    res.json({ errors: [], message: 'No errors logged' });
+  }
+});
+
 // API endpoint for dashboard stats
 app.get('/api/stats', async (req, res) => {
   try {

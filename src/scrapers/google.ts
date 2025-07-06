@@ -1,4 +1,4 @@
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer, { Page, ElementHandle } from 'puppeteer';
 import { Lead, GooglePlace } from '../types/index.js';
 import { saveLeadsToAirtable } from '../utils/airtable.js';
 
@@ -321,155 +321,198 @@ async function scrapeGoogleMapsForLeads(
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-blink-features=AutomationControlled',
-      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      '--disable-features=IsolateOrigins',
+      '--disable-site-isolation-trials',
+      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     ]
   });
   
   try {
     const page = await browser.newPage();
     
-    // Set viewport and user agent
-    await page.setViewport({ width: 1366, height: 768 });
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
+    // Set viewport and additional headers
+    await page.setViewport({ width: 1920, height: 1080 });
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'en-US,en;q=0.9'
+    });
     
     // Navigate to Google Maps
     await page.goto('https://www.google.com/maps', { 
-      waitUntil: 'networkidle2',
-      timeout: 30000 
+      waitUntil: 'networkidle0',
+      timeout: 60000 
     });
+    
+    // Wait a bit for page to stabilize
+    await page.waitForTimeout(2000);
     
     // Accept cookies if present
     try {
-      await page.waitForSelector('button[aria-label*="Accept all"]', { timeout: 5000 });
+      await page.waitForSelector('button[aria-label*="Accept all"]', { timeout: 3000 });
       await page.click('button[aria-label*="Accept all"]');
+      await page.waitForTimeout(1000);
     } catch (e) {
       // Cookie banner might not be present
     }
     
-    // Wait for search box and search
-    await page.waitForSelector('input#searchboxinput', { timeout: 10000 });
-    await page.type('input#searchboxinput', searchQuery);
+    // Wait for and click on search box
+    const searchBoxSelector = 'input[id="searchboxinput"]';
+    await page.waitForSelector(searchBoxSelector, { timeout: 10000 });
+    await page.click(searchBoxSelector);
+    await page.waitForTimeout(500);
+    
+    // Clear any existing text and type search query
+    await page.keyboard.down('Control');
+    await page.keyboard.press('A');
+    await page.keyboard.up('Control');
+    await page.keyboard.type(searchQuery);
+    await page.waitForTimeout(500);
+    
+    // Press Enter to search
     await page.keyboard.press('Enter');
     
-    // Wait for results with better error handling
-    try {
-      await page.waitForSelector('div[role="article"]', { timeout: 15000 });
-    } catch (e) {
-      console.log('⚠️  No results found for this search');
+    // Wait for results - try multiple selectors
+    const resultsLoaded = await Promise.race([
+      page.waitForSelector('div[role="article"]', { timeout: 15000 }).then(() => 'article'),
+      page.waitForSelector('div[role="main"] a[href*="maps/place"]', { timeout: 15000 }).then(() => 'place'),
+      page.waitForSelector('div[jsaction*="mouseover:pane"]', { timeout: 15000 }).then(() => 'pane')
+    ]).catch(() => null);
+    
+    if (!resultsLoaded) {
+      console.log('⚠️  No results found or page structure changed');
       return [];
     }
     
-    // Scroll to load more results
-    await autoScroll(page, 5);
+    console.log(`📍 Results loaded using selector: ${resultsLoaded}`);
+    await page.waitForTimeout(2000);
     
-    // Extract place data
+    // Scroll to load more results
+    await autoScroll(page, 3);
+    
+    // Extract basic place data using multiple strategies
     const places = await page.evaluate(() => {
       const results: any[] = [];
-      const articles = document.querySelectorAll('div[role="article"]');
       
+      // Strategy 1: Look for role="article" divs
+      const articles = document.querySelectorAll('div[role="article"]');
       articles.forEach((article) => {
-        try {
-          const name = article.querySelector('h3')?.textContent || '';
-          const ratingEl = article.querySelector('span[role="img"]');
-          const rating = ratingEl ? parseFloat(ratingEl.getAttribute('aria-label')?.match(/[\d.]+/)?.[0] || '0') : 0;
-          const reviewCountText = article.querySelector('span[aria-label*="reviews"]')?.textContent || '';
-          const reviewCount = parseInt(reviewCountText.match(/\d+/)?.[0] || '0');
-          const address = article.querySelector('span[jsan*="address"]')?.textContent || '';
+        const name = article.querySelector('div[class*="fontHeadlineSmall"]')?.textContent || 
+                    article.querySelector('span[jsan*="7.fontHeadlineSmall"]')?.textContent ||
+                    article.querySelector('h3')?.textContent;
+        
+        if (name) {
+          const ratingText = article.querySelector('span[role="img"]')?.getAttribute('aria-label') || '';
+          const rating = parseFloat(ratingText.match(/[\d.]+/)?.[0] || '0');
           
-          if (name) {
-            results.push({
-              name,
-              rating,
-              reviewCount,
-              address
-            });
-          }
-        } catch (e) {
-          // Skip this result if parsing fails
+          results.push({
+            name: name.trim(),
+            rating,
+            element: article
+          });
         }
       });
       
-      return results;
+      // Strategy 2: Look for links with place data
+      if (results.length === 0) {
+        const placeLinks = document.querySelectorAll('a[href*="/maps/place"]');
+        placeLinks.forEach((link) => {
+          const parent = link.closest('div[jsaction]');
+          if (parent) {
+            const name = parent.querySelector('div[class*="fontHeadlineSmall"]')?.textContent ||
+                        parent.querySelector('[role="heading"]')?.textContent;
+            if (name) {
+              results.push({
+                name: name.trim(),
+                rating: 0,
+                element: parent
+              });
+            }
+          }
+        });
+      }
+      
+      return results.slice(0, 20); // Limit to 20 results
     });
     
     console.log(`📍 Found ${places.length} places`);
     
+    if (places.length === 0) {
+      console.log('⚠️  No places extracted - Google Maps might have changed structure');
+      return [];
+    }
+    
     const leads: Lead[] = [];
     
-    // Get details for each place
+    // Get details for each place by clicking
     for (let i = 0; i < Math.min(places.length, maxResults); i++) {
       try {
-        const place = places[i];
-        console.log(`📍 Getting details for: ${place.name}`);
+        console.log(`📍 Getting details for: ${places[i].name}`);
         
-        // Click on the place
-        const placeElements = await page.$$('div[role="article"] h3');
-        if (placeElements[i]) {
-          await placeElements[i].click();
+        // Re-find the element and click it
+        const placeElement = await page.evaluateHandle((placeName) => {
+          const elements = Array.from(document.querySelectorAll('div[role="article"], a[href*="/maps/place"]'));
+          return elements.find(el => el.textContent?.includes(placeName)) as Element | null;
+        }, places[i].name);
+        
+        if (placeElement) {
+          const element = placeElement as ElementHandle<Element>;
+          await element.click();
+          await page.waitForTimeout(2000);
           
-          // Wait for details panel
-          await page.waitForSelector('div[role="main"]', { timeout: 5000 });
-          await page.waitForTimeout(1000); // Let details load
-          
-          // Extract detailed information
+          // Extract details from side panel
           const details = await page.evaluate(() => {
-            const getTextContent = (selector: string) => {
-              const element = document.querySelector(selector);
-              return element?.textContent?.trim() || undefined;
-            };
+            // Look for phone
+            const phoneButton = Array.from(document.querySelectorAll('button[data-tooltip]'))
+              .find(btn => btn.getAttribute('data-tooltip')?.toLowerCase().includes('phone'));
+            const phone = phoneButton?.getAttribute('aria-label')?.replace(/[^\d]/g, '');
             
-            // Extract phone
-            const phoneEl = document.querySelector('button[data-tooltip*="phone"]');
-            const phone = phoneEl?.getAttribute('aria-label')?.replace('Phone:', '').trim() || undefined;
+            // Look for website
+            const websiteButton = Array.from(document.querySelectorAll('a[data-tooltip]'))
+              .find(a => a.getAttribute('data-tooltip')?.toLowerCase().includes('website'));
+            const website = websiteButton?.getAttribute('href');
             
-            // Extract website
-            const websiteEl = document.querySelector('a[data-tooltip*="website"]');
-            const website = websiteEl?.getAttribute('href') || undefined;
+            // Look for address
+            const addressButton = Array.from(document.querySelectorAll('button[data-tooltip]'))
+              .find(btn => btn.getAttribute('data-tooltip')?.toLowerCase().includes('address'));
+            const address = addressButton?.getAttribute('aria-label');
             
-            // Extract hours
-            const hoursButton = document.querySelector('button[data-item-id*="hours"]');
-            const hoursText = hoursButton?.querySelector('div[class*="text"]')?.textContent;
-            
-            return {
-              phone,
-              website,
-              hoursText
-            };
+            return { phone, website, address };
           });
           
-          // Create lead object
-          const lead: Lead = {
-            source: 'google',
-            businessName: place.name,
-            address: place.address,
-            phone: details.phone,
-            website: details.website,
-            rating: place.rating,
-            reviewCount: place.reviewCount,
-            category: categorizeGoogleBusiness(query),
-            city: city.toLowerCase(),
-            location: place.address,
-            status: 'new',
-            createdAt: new Date(),
-            updatedAt: new Date()
-          };
-          
-          // Only add if has contact info
-          if (lead.phone || lead.website) {
+          // Create lead if has contact info
+          if (details.phone || details.website) {
+            const lead: Lead = {
+              source: 'google',
+              businessName: places[i].name,
+              address: details.address || `${city}, Australia`,
+              phone: details.phone || undefined,
+              website: details.website || undefined,
+              rating: places[i].rating,
+              reviewCount: 0,
+              category: categorizeGoogleBusiness(query),
+              city: city.toLowerCase(),
+              location: details.address || `${city}, Australia`,
+              status: 'new',
+              createdAt: new Date(),
+              updatedAt: new Date()
+            };
+            
             leads.push(lead);
+            console.log(`✅ Added lead: ${lead.businessName}`);
+          } else {
+            console.log(`⚠️  No contact info for: ${places[i].name}`);
           }
         }
       } catch (error: any) {
-        console.warn(`⚠️  Failed to get details for place ${i}:`, error.message);
-        // Continue with next place
+        console.warn(`⚠️  Failed to get details for place ${i}: ${error.message}`);
       }
     }
     
+    console.log(`✅ Successfully scraped ${leads.length} leads with contact info`);
     return leads;
     
   } catch (error) {
     console.error('❌ Error scraping Google Maps:', error);
-    throw error;
+    return [];
   } finally {
     await browser.close();
   }
