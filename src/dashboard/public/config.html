@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandyLabs Growth Agent - Configuration</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .header {
+      background: #6366f1;
+      color: white;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .config-card {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    
+    .config-card.inactive {
+      opacity: 0.6;
+    }
+    
+    .config-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 1rem;
+    }
+    
+    .config-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+    }
+    
+    .config-status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: bold;
+    }
+    
+    .config-status.active {
+      background: #10b981;
+      color: white;
+    }
+    
+    .config-status.inactive {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .config-details {
+      color: #666;
+      font-size: 0.875rem;
+      line-height: 1.6;
+    }
+    
+    .config-details strong {
+      color: #333;
+    }
+    
+    .config-actions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+    
+    .btn-secondary {
+      background: #e5e5e5;
+      color: #333;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    
+    .add-config {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
+    
+    .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+    }
+    
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    
+    .form-group small {
+      color: #666;
+      font-size: 0.875rem;
+    }
+    
+    .tag-input {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      min-height: 45px;
+    }
+    
+    .tag {
+      background: #6366f1;
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .tag button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>Search Configuration Manager</h1>
+      <p>Configure your lead generation searches across cities and categories</p>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="add-config">
+      <h2>Create New Configuration</h2>
+      <form id="configForm">
+        <div class="form-group">
+          <label>Configuration Name</label>
+          <input type="text" id="configName" placeholder="e.g., Melbourne Cafes & Restaurants" required>
+        </div>
+        
+        <div class="form-group">
+          <label>Search Sources</label>
+          <div>
+            <label>
+              <input type="checkbox" name="sources" value="instagram"> Instagram
+            </label>
+            <label style="margin-left: 1rem;">
+              <input type="checkbox" name="sources" value="google"> Google Maps
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Cities</label>
+          <div class="tag-input" id="citiesInput">
+            <input type="text" id="cityInput" placeholder="Type city and press Enter" style="border: none; outline: none; flex: 1;">
+          </div>
+          <small>Available: Melbourne, Sydney, Adelaide, Brisbane, Perth, Canberra, Hobart, Darwin</small>
+        </div>
+        
+        <div class="form-group">
+          <label>Categories / Business Types</label>
+          <div class="tag-input" id="categoriesInput">
+            <input type="text" id="categoryInput" placeholder="Type category and press Enter" style="border: none; outline: none; flex: 1;">
+          </div>
+          <small>Examples: cafe, restaurant, influencer, recruiter, marketing agency, gym, boutique</small>
+        </div>
+        
+        <div class="form-group">
+          <label>Instagram Keywords (optional)</label>
+          <div class="tag-input" id="keywordsInput">
+            <input type="text" id="keywordInput" placeholder="Type hashtag and press Enter" style="border: none; outline: none; flex: 1;">
+          </div>
+          <small>Include # for hashtags, e.g., #melbournecafe</small>
+        </div>
+        
+        <div class="form-group">
+          <label>Max Results Per Search</label>
+          <input type="number" id="maxResults" value="30" min="10" max="100">
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Create Configuration</button>
+      </form>
+    </div>
+    
+    <h2>Existing Configurations</h2>
+    <div class="config-grid" id="configGrid">
+      <!-- Configs will be loaded here -->
+    </div>
+  </div>
+  
+  <script>
+    let configs = [];
+    let cities = [];
+    let categories = [];
+    let keywords = [];
+    
+    // Tag management
+    function addTag(container, array, value) {
+      if (value && !array.includes(value)) {
+        array.push(value);
+        renderTags(container, array);
+      }
+    }
+    
+    function removeTag(container, array, index) {
+      array.splice(index, 1);
+      renderTags(container, array);
+    }
+    
+    function renderTags(container, array) {
+      const input = container.querySelector('input');
+      container.innerHTML = '';
+      
+      array.forEach((tag, index) => {
+        const tagEl = document.createElement('div');
+        tagEl.className = 'tag';
+        tagEl.innerHTML = `
+          ${tag}
+          <button onclick="removeTag(document.getElementById('${container.id}'), ${container.id.replace('Input', '')}, ${index})">×</button>
+        `;
+        container.appendChild(tagEl);
+      });
+      
+      container.appendChild(input);
+    }
+    
+    // Setup tag inputs
+    ['city', 'category', 'keyword'].forEach(type => {
+      const input = document.getElementById(`${type}Input`);
+      const container = document.getElementById(`${type}sInput`);
+      const array = window[`${type === 'keyword' ? 'keyword' : type === 'city' ? 'citie' : 'categorie'}s`];
+      
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addTag(container, array, input.value.trim());
+          input.value = '';
+        }
+      });
+    });
+    
+    // Load configurations
+    async function loadConfigs() {
+      try {
+        const response = await fetch('/api/configs');
+        configs = await response.json();
+        renderConfigs();
+      } catch (error) {
+        console.error('Failed to load configs:', error);
+      }
+    }
+    
+    function renderConfigs() {
+      const grid = document.getElementById('configGrid');
+      
+      grid.innerHTML = configs.map(config => `
+        <div class="config-card ${config.active ? '' : 'inactive'}">
+          <div class="config-header">
+            <div>
+              <div class="config-title">${config.name}</div>
+              <span class="config-status ${config.active ? 'active' : 'inactive'}">
+                ${config.active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+          </div>
+          
+          <div class="config-details">
+            <p><strong>Sources:</strong> ${config.sources.join(', ')}</p>
+            <p><strong>Cities:</strong> ${config.cities.join(', ')}</p>
+            <p><strong>Categories:</strong> ${config.categories.join(', ')}</p>
+            ${config.keywords.length > 0 ? `<p><strong>Keywords:</strong> ${config.keywords.join(', ')}</p>` : ''}
+            <p><strong>Max Results:</strong> ${config.maxResultsPerSearch} per search</p>
+          </div>
+          
+          <div class="config-actions">
+            <button class="btn ${config.active ? 'btn-danger' : 'btn-success'}" 
+                    onclick="toggleConfig('${config.id}', ${!config.active})">
+              ${config.active ? 'Deactivate' : 'Activate'}
+            </button>
+            <button class="btn btn-secondary" onclick="deleteConfig('${config.id}')">
+              Delete
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Form submission
+    document.getElementById('configForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const sources = Array.from(document.querySelectorAll('input[name="sources"]:checked'))
+        .map(cb => cb.value);
+      
+      if (sources.length === 0) {
+        alert('Please select at least one source');
+        return;
+      }
+      
+      if (cities.length === 0) {
+        alert('Please add at least one city');
+        return;
+      }
+      
+      if (categories.length === 0) {
+        alert('Please add at least one category');
+        return;
+      }
+      
+      const config = {
+        name: document.getElementById('configName').value,
+        sources,
+        cities,
+        categories,
+        keywords,
+        maxResultsPerSearch: parseInt(document.getElementById('maxResults').value),
+        active: true,
+      };
+      
+      try {
+        const response = await fetch('/api/configs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+        
+        if (response.ok) {
+          alert('Configuration created successfully!');
+          document.getElementById('configForm').reset();
+          cities = [];
+          categories = [];
+          keywords = [];
+          renderTags(document.getElementById('citiesInput'), cities);
+          renderTags(document.getElementById('categoriesInput'), categories);
+          renderTags(document.getElementById('keywordsInput'), keywords);
+          loadConfigs();
+        }
+      } catch (error) {
+        alert('Failed to create configuration');
+      }
+    });
+    
+    async function toggleConfig(id, active) {
+      try {
+        const response = await fetch(`/api/configs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active }),
+        });
+        
+        if (response.ok) {
+          loadConfigs();
+        }
+      } catch (error) {
+        alert('Failed to update configuration');
+      }
+    }
+    
+    async function deleteConfig(id) {
+      if (!confirm('Are you sure you want to delete this configuration?')) return;
+      
+      try {
+        const response = await fetch(`/api/configs/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          loadConfigs();
+        }
+      } catch (error) {
+        alert('Failed to delete configuration');
+      }
+    }
+    
+    // Initialize
+    loadConfigs();
+  </script>
+</body>
+</html> 

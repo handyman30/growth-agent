@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandyLabs Growth Agent Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    .header {
+      background: #6366f1;
+      color: white;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card h3 {
+      font-size: 0.875rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #6366f1;
+    }
+    
+    .leads-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .tab {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s;
+    }
+    
+    .tab.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1;
+    }
+    
+    .lead-card {
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      transition: all 0.3s;
+    }
+    
+    .lead-card:hover {
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .lead-info h4 {
+      font-size: 1.125rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .lead-info p {
+      color: #666;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .lead-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary {
+      background: #6366f1;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #4f46e5;
+    }
+    
+    .btn-secondary {
+      background: #e5e5e5;
+      color: #333;
+    }
+    
+    .btn-secondary:hover {
+      background: #d4d4d4;
+    }
+    
+    .dm-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .dm-modal.active {
+      display: flex;
+    }
+    
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    
+    .dm-preview {
+      background: #f5f5f5;
+      padding: 1rem;
+      border-radius: 4px;
+      margin: 1rem 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    
+    .copy-btn {
+      background: #10b981;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    
+    .copy-btn:hover {
+      background: #059669;
+    }
+    
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #6366f1;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>HandyLabs Growth Agent</h1>
+      <p>Automated Lead Generation & Outreach Dashboard</p>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="stats">
+      <div class="stat-card">
+        <h3>Total Leads</h3>
+        <div class="value" id="totalLeads">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Ready to Contact</h3>
+        <div class="value" id="readyToContact">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>Emails Sent Today</h3>
+        <div class="value" id="emailsSent">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>DMs to Send</h3>
+        <div class="value" id="dmsToSend">0</div>
+      </div>
+    </div>
+    
+    <div class="leads-section">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div class="tabs">
+          <button class="tab active" onclick="showTab('email')">Email Leads</button>
+          <button class="tab" onclick="showTab('instagram')">Instagram DMs</button>
+          <button class="tab" onclick="showTab('all')">All Leads</button>
+        </div>
+        
+        <div style="display: flex; gap: 1rem;">
+          <select id="cityFilter" onchange="filterLeads()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+            <option value="">All Cities</option>
+            <option value="melbourne">Melbourne</option>
+            <option value="sydney">Sydney</option>
+            <option value="adelaide">Adelaide</option>
+            <option value="brisbane">Brisbane</option>
+            <option value="perth">Perth</option>
+          </select>
+          
+          <select id="sourceFilter" onchange="filterLeads()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+            <option value="">All Sources</option>
+            <option value="instagram">Instagram</option>
+            <option value="google">Google</option>
+          </select>
+          
+          <select id="categoryFilter" onchange="filterLeads()" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ddd;">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="leadsList">
+        <div class="loading"></div> Loading leads...
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+      <a href="/config" class="btn btn-secondary">Manage Search Configurations</a>
+    </div>
+  </div>
+  
+  <div class="dm-modal" id="dmModal">
+    <div class="modal-content">
+      <h2>Generated DM for <span id="dmBusinessName"></span></h2>
+      
+      <h3>Template Version:</h3>
+      <div class="dm-preview" id="templateDM"></div>
+      <button class="copy-btn" onclick="copyToClipboard('templateDM')">Copy Template DM</button>
+      
+      <h3>AI Version:</h3>
+      <div class="dm-preview" id="aiDM"></div>
+      <button class="copy-btn" onclick="copyToClipboard('aiDM')">Copy AI DM</button>
+      
+      <button class="btn btn-secondary" onclick="closeDMModal()">Close</button>
+    </div>
+  </div>
+  
+  <script>
+    let currentLeads = [];
+    let allLeads = [];
+    let currentTab = 'email';
+    let availableCategories = new Set();
+    
+    async function loadLeads() {
+      try {
+        const response = await fetch('/api/leads');
+        allLeads = await response.json();
+        
+        // Collect unique categories
+        availableCategories = new Set(allLeads.map(l => l.category).filter(Boolean));
+        updateCategoryFilter();
+        
+        filterLeads();
+        updateStats();
+      } catch (error) {
+        console.error('Failed to load leads:', error);
+      }
+    }
+    
+    function updateCategoryFilter() {
+      const select = document.getElementById('categoryFilter');
+      const currentValue = select.value;
+      
+      select.innerHTML = '<option value="">All Categories</option>';
+      Array.from(availableCategories).sort().forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+        select.appendChild(option);
+      });
+      
+      select.value = currentValue;
+    }
+    
+    function filterLeads() {
+      const cityFilter = document.getElementById('cityFilter').value;
+      const sourceFilter = document.getElementById('sourceFilter').value;
+      const categoryFilter = document.getElementById('categoryFilter').value;
+      
+      currentLeads = allLeads.filter(lead => {
+        if (cityFilter && lead.city?.toLowerCase() !== cityFilter) return false;
+        if (sourceFilter && lead.source !== sourceFilter) return false;
+        if (categoryFilter && lead.category !== categoryFilter) return false;
+        return true;
+      });
+      
+      renderLeads();
+      updateStats();
+    }
+    
+    function updateStats() {
+      const filteredNew = currentLeads.filter(l => l.status === 'new');
+      
+      document.getElementById('totalLeads').textContent = currentLeads.length;
+      document.getElementById('readyToContact').textContent = filteredNew.length;
+      document.getElementById('emailsSent').textContent = 
+        currentLeads.filter(l => l.status === 'contacted' && l.email).length;
+      document.getElementById('dmsToSend').textContent = 
+        filteredNew.filter(l => l.instagramHandle).length;
+    }
+    
+    function showTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderLeads();
+    }
+    
+    function renderLeads() {
+      const container = document.getElementById('leadsList');
+      let filteredLeads = currentLeads;
+      
+      if (currentTab === 'email') {
+        filteredLeads = currentLeads.filter(l => l.email && l.status === 'new');
+      } else if (currentTab === 'instagram') {
+        filteredLeads = currentLeads.filter(l => l.instagramHandle && l.status === 'new');
+      }
+      
+      if (filteredLeads.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666;">No leads found matching your filters</p>';
+        return;
+      }
+      
+      container.innerHTML = filteredLeads.map(lead => `
+        <div class="lead-card">
+          <div class="lead-info">
+            <h4>${lead.businessName}</h4>
+            <p><strong>Category:</strong> ${lead.category || 'N/A'}</p>
+            <p><strong>City:</strong> ${lead.city || 'N/A'}</p>
+            <p><strong>Source:</strong> ${lead.source}</p>
+            <p><strong>Contact:</strong> ${lead.email || lead.phone || '@' + lead.instagramHandle}</p>
+            ${lead.rating ? `<p><strong>Rating:</strong> ⭐ ${lead.rating}/5 (${lead.reviewCount || 0} reviews)</p>` : ''}
+            <p><strong>Status:</strong> ${lead.status}</p>
+          </div>
+          <div class="lead-actions">
+            ${lead.email ? `
+              <button class="btn btn-primary" onclick="sendEmail('${lead.id}')">
+                Send Email
+              </button>
+            ` : ''}
+            ${lead.instagramHandle ? `
+              <button class="btn btn-primary" onclick="generateDM('${lead.id}')">
+                Generate DM
+              </button>
+            ` : ''}
+            <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
+              Mark Contacted
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    async function sendEmail(leadId) {
+      const lead = allLeads.find(l => l.id === leadId);
+      if (!lead) return;
+      
+      try {
+        const response = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead })
+        });
+        
+        if (response.ok) {
+          alert('Email sent successfully!');
+          lead.status = 'contacted';
+          filterLeads();
+        }
+      } catch (error) {
+        alert('Failed to send email');
+      }
+    }
+    
+    async function generateDM(leadId) {
+      const lead = allLeads.find(l => l.id === leadId);
+      if (!lead) return;
+      
+      try {
+        const response = await fetch('/api/generate-dm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lead })
+        });
+        
+        const { template, gpt } = await response.json();
+        
+        document.getElementById('dmBusinessName').textContent = lead.businessName;
+        document.getElementById('templateDM').textContent = template;
+        document.getElementById('aiDM').textContent = gpt;
+        document.getElementById('dmModal').classList.add('active');
+      } catch (error) {
+        alert('Failed to generate DM');
+      }
+    }
+    
+    function closeDMModal() {
+      document.getElementById('dmModal').classList.remove('active');
+    }
+    
+    function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+      });
+    }
+    
+    async function markContacted(leadId) {
+      try {
+        const response = await fetch(`/api/leads/${leadId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'contacted' })
+        });
+        
+        if (response.ok) {
+          const lead = allLeads.find(l => l.id === leadId);
+          if (lead) lead.status = 'contacted';
+          filterLeads();
+        }
+      } catch (error) {
+        alert('Failed to update status');
+      }
+    }
+    
+    // Load stats
+    async function loadStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+        
+        console.log('System Stats:', stats);
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      }
+    }
+    
+    // Load leads on page load
+    loadLeads();
+    loadStats();
+    
+    // Refresh every 30 seconds
+    setInterval(loadLeads, 30000);
+  </script>
+</body>
+</html> 

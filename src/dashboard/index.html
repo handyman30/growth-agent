@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HandyLabs Growth Agent Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    [x-cloak] { display: none !important; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div x-data="dashboardApp()" x-init="init()" x-cloak>
+    <!-- Header -->
+    <header class="bg-white shadow">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex justify-between items-center">
+          <h1 class="text-2xl font-bold text-gray-900">HandyLabs Growth Agent Dashboard</h1>
+          <div class="flex space-x-4">
+            <a href="/config" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+              Configure Searches
+            </a>
+            <button @click="refreshData()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- System Status Bar -->
+    <div class="bg-blue-50 border-b border-blue-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex justify-between items-center text-sm">
+          <div class="flex space-x-6">
+            <span class="flex items-center">
+              <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+              System Active
+            </span>
+            <span>Leads Today: <strong x-text="systemStatus.totalLeadsToday">0</strong></span>
+            <span>Emails Sent: <strong x-text="systemStatus.totalEmailsSentToday">0</strong></span>
+            <span x-show="systemStatus.lastScrapeTime">
+              Last Scrape: <strong x-text="formatTime(systemStatus.lastScrapeTime)">Never</strong>
+            </span>
+          </div>
+          <button @click="showActivities = !showActivities" class="text-blue-600 hover:text-blue-800">
+            <span x-text="showActivities ? 'Hide' : 'Show'"></span> Activities
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activities Panel -->
+    <div x-show="showActivities" x-transition class="bg-gray-50 border-b">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <h3 class="text-sm font-semibold mb-2">Recent Activities</h3>
+        <div class="space-y-1 max-h-48 overflow-y-auto text-sm">
+          <template x-for="activity in systemStatus.activities.slice().reverse()" :key="activity.timestamp">
+            <div class="flex justify-between items-center py-1">
+              <div class="flex items-center">
+                <span :class="{
+                  'text-green-600': activity.status === 'success',
+                  'text-red-600': activity.status === 'error',
+                  'text-yellow-600': activity.status === 'warning'
+                }" class="mr-2">●</span>
+                <span x-text="activity.message"></span>
+              </div>
+              <span class="text-gray-500 text-xs" x-text="formatTime(activity.timestamp)"></span>
+            </div>
+          </template>
+          <div x-show="!systemStatus.activities || systemStatus.activities.length === 0" class="text-gray-500">
+            No recent activities
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div x-show="systemStatus.errors && systemStatus.errors.length > 0" class="bg-red-50 border-b border-red-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center">
+          <svg class="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+          <span class="text-sm text-red-800">
+            <strong>Recent Errors:</strong> 
+            <span x-text="systemStatus.errors[0]?.message"></span>
+            <button @click="showErrors = !showErrors" class="ml-2 text-red-600 underline">
+              View All
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-sm font-medium text-gray-500">Total Leads</h3>
+          <p class="text-2xl font-bold text-gray-900" x-text="stats.totalLeads || 0">0</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-sm font-medium text-gray-500">Contacted</h3>
+          <p class="text-2xl font-bold text-blue-600" x-text="stats.contacted || 0">0</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-sm font-medium text-gray-500">Replied</h3>
+          <p class="text-2xl font-bold text-green-600" x-text="stats.replied || 0">0</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+          <h3 class="text-sm font-medium text-gray-500">Hot Leads</h3>
+          <p class="text-2xl font-bold text-red-600" x-text="stats.hotLeads || 0">0</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Filters -->
+        <div class="lg:col-span-1">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-lg font-semibold mb-4">Filters</h2>
+            
+            <!-- City Filter -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">City</label>
+              <select x-model="selectedCity" @change="filterLeads()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="">All Cities</option>
+                <option value="melbourne">Melbourne</option>
+                <option value="sydney">Sydney</option>
+                <option value="adelaide">Adelaide</option>
+                <option value="brisbane">Brisbane</option>
+                <option value="perth">Perth</option>
+              </select>
+            </div>
+
+            <!-- Source Filter -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Source</label>
+              <select x-model="selectedSource" @change="filterLeads()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="">All Sources</option>
+                <option value="instagram">Instagram</option>
+                <option value="google">Google Maps</option>
+              </select>
+            </div>
+
+            <!-- Category Filter -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
+              <select x-model="selectedCategory" @change="filterLeads()" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                <option value="">All Categories</option>
+                <option value="cafe">Cafe</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="influencer">Influencer</option>
+                <option value="recruiter">Recruiter</option>
+                <option value="service">Service</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <!-- Cron Jobs Status -->
+            <div class="mt-6">
+              <h3 class="text-sm font-semibold mb-2">Automated Jobs</h3>
+              <div class="space-y-2 text-sm">
+                <template x-for="job in systemStatus.cronJobs" :key="job.name">
+                  <div class="flex justify-between items-center">
+                    <span x-text="job.name" class="truncate"></span>
+                    <span :class="{
+                      'text-green-600': job.status === 'active',
+                      'text-red-600': job.status === 'error',
+                      'text-gray-600': job.status === 'paused'
+                    }" class="text-xs">●</span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Leads Table -->
+        <div class="lg:col-span-3">
+          <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+              <h2 class="text-lg font-semibold mb-4">Leads</h2>
+              
+              <!-- Loading State -->
+              <div x-show="loading" class="text-center py-8">
+                <div class="inline-flex items-center">
+                  <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading...
+                </div>
+              </div>
+
+              <!-- Leads Table -->
+              <div x-show="!loading" class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Business</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white divide-y divide-gray-200">
+                    <template x-for="lead in filteredLeads" :key="lead.id">
+                      <tr>
+                        <td class="px-4 py-4 whitespace-nowrap">
+                          <div>
+                            <div class="text-sm font-medium text-gray-900" x-text="lead.businessName"></div>
+                            <div class="text-sm text-gray-500" x-text="lead.category"></div>
+                          </div>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap">
+                          <div>
+                            <div x-show="lead.email" class="text-sm text-gray-900">
+                              <span class="text-gray-500">📧</span> <span x-text="lead.email"></span>
+                            </div>
+                            <div x-show="lead.instagramHandle" class="text-sm text-gray-900">
+                              <span class="text-gray-500">📷</span> @<span x-text="lead.instagramHandle"></span>
+                            </div>
+                            <div x-show="lead.phone" class="text-sm text-gray-500">
+                              <span class="text-gray-500">📱</span> <span x-text="lead.phone"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap">
+                          <div class="flex items-center">
+                            <span x-text="lead.source" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                              :class="{
+                                'bg-purple-100 text-purple-800': lead.source === 'instagram',
+                                'bg-blue-100 text-blue-800': lead.source === 'google'
+                              }"></span>
+                            <span class="ml-2 text-xs text-gray-500" x-text="lead.city"></span>
+                          </div>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap">
+                          <span x-text="lead.status" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                            :class="{
+                              'bg-gray-100 text-gray-800': lead.status === 'new',
+                              'bg-blue-100 text-blue-800': lead.status === 'contacted',
+                              'bg-green-100 text-green-800': lead.status === 'replied',
+                              'bg-red-100 text-red-800': lead.status === 'hot_lead'
+                            }"></span>
+                        </td>
+                        <td class="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                          <button x-show="lead.email" @click="openEmailModal(lead)" class="text-blue-600 hover:text-blue-900 mr-2">Email</button>
+                          <button x-show="lead.instagramHandle" @click="openDMModal(lead)" class="text-purple-600 hover:text-purple-900">DM</button>
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+                
+                <!-- Empty State -->
+                <div x-show="filteredLeads.length === 0" class="text-center py-8">
+                  <p class="text-gray-500">No leads found. Run a scraping job or adjust your filters.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Email Modal -->
+    <div x-show="showEmailModal" @click.away="showEmailModal = false" class="fixed inset-0 overflow-y-auto z-50" style="display: none;">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Send Email</h3>
+            <div x-show="selectedLead">
+              <p class="text-sm text-gray-500 mb-4">To: <span x-text="selectedLead?.businessName"></span> (<span x-text="selectedLead?.email"></span>)</p>
+              <textarea x-model="emailContent" rows="10" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button @click="sendEmail()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
+              Send Email
+            </button>
+            <button @click="showEmailModal = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DM Modal -->
+    <div x-show="showDMModal" @click.away="showDMModal = false" class="fixed inset-0 overflow-y-auto z-50" style="display: none;">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+        <div class="fixed inset-0 transition-opacity" aria-hidden="true">
+          <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+        </div>
+        
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Instagram DM</h3>
+            <div x-show="selectedLead">
+              <p class="text-sm text-gray-500 mb-4">To: @<span x-text="selectedLead?.instagramHandle"></span></p>
+              <textarea x-model="dmContent" rows="6" class="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"></textarea>
+              <p class="text-xs text-gray-500 mt-2">Copy this message and send it manually on Instagram</p>
+            </div>
+          </div>
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+            <button @click="copyDM()" type="button" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-purple-600 text-base font-medium text-white hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:ml-3 sm:w-auto sm:text-sm">
+              Copy to Clipboard
+            </button>
+            <button @click="showDMModal = false" type="button" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function dashboardApp() {
+      return {
+        leads: [],
+        filteredLeads: [],
+        stats: {},
+        systemStatus: {
+          totalLeadsToday: 0,
+          totalEmailsSentToday: 0,
+          activities: [],
+          errors: [],
+          cronJobs: []
+        },
+        showActivities: false,
+        showErrors: false,
+        selectedCity: '',
+        selectedSource: '',
+        selectedCategory: '',
+        selectedLead: null,
+        showEmailModal: false,
+        showDMModal: false,
+        emailContent: '',
+        dmContent: '',
+        loading: false,
+
+        async init() {
+          await this.fetchLeads();
+          await this.fetchStats();
+          await this.fetchSystemStatus();
+          // Refresh system status every 30 seconds
+          setInterval(() => this.fetchSystemStatus(), 30000);
+        },
+
+        async fetchSystemStatus() {
+          try {
+            const response = await fetch('/api/system-status');
+            if (response.ok) {
+              this.systemStatus = await response.json();
+            }
+          } catch (error) {
+            console.error('Error fetching system status:', error);
+          }
+        },
+
+        async refreshData() {
+          this.loading = true;
+          await Promise.all([
+            this.fetchLeads(),
+            this.fetchStats(),
+            this.fetchSystemStatus()
+          ]);
+          this.loading = false;
+        },
+
+        formatTime(timestamp) {
+          if (!timestamp) return 'Never';
+          const date = new Date(timestamp);
+          const now = new Date();
+          const diff = now - date;
+          
+          if (diff < 60000) return 'Just now';
+          if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+          if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+          
+          return date.toLocaleDateString();
+        },
+
+        async fetchLeads() {
+          this.loading = true;
+          try {
+            const response = await fetch('/api/leads');
+            if (response.ok) {
+              this.leads = await response.json();
+              this.filterLeads();
+            }
+          } catch (error) {
+            console.error('Error fetching leads:', error);
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async fetchStats() {
+          try {
+            const response = await fetch('/api/stats');
+            if (response.ok) {
+              this.stats = await response.json();
+            }
+          } catch (error) {
+            console.error('Error fetching stats:', error);
+          }
+        },
+
+        filterLeads() {
+          this.filteredLeads = this.leads.filter(lead => {
+            const cityMatch = !this.selectedCity || lead.city === this.selectedCity;
+            const sourceMatch = !this.selectedSource || lead.source === this.selectedSource;
+            const categoryMatch = !this.selectedCategory || lead.category === this.selectedCategory;
+            return cityMatch && sourceMatch && categoryMatch;
+          });
+        },
+
+        openEmailModal(lead) {
+          this.selectedLead = lead;
+          this.generateEmail();
+          this.showEmailModal = true;
+        },
+
+        openDMModal(lead) {
+          this.selectedLead = lead;
+          this.generateDM();
+          this.showDMModal = true;
+        },
+
+        async generateEmail() {
+          try {
+            const response = await fetch('/api/generate-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lead: this.selectedLead })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              this.emailContent = data.content;
+            }
+          } catch (error) {
+            console.error('Error generating email:', error);
+          }
+        },
+
+        async generateDM() {
+          try {
+            const response = await fetch('/api/generate-dm', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ lead: this.selectedLead })
+            });
+            if (response.ok) {
+              const data = await response.json();
+              this.dmContent = data.content;
+            }
+          } catch (error) {
+            console.error('Error generating DM:', error);
+          }
+        },
+
+        async sendEmail() {
+          try {
+            const response = await fetch('/api/send-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                lead: this.selectedLead,
+                content: this.emailContent
+              })
+            });
+            if (response.ok) {
+              alert('Email sent successfully!');
+              this.showEmailModal = false;
+              await this.updateLeadStatus(this.selectedLead.id, 'contacted');
+              this.fetchLeads();
+            } else {
+              alert('Failed to send email');
+            }
+          } catch (error) {
+            console.error('Error sending email:', error);
+            alert('Error sending email');
+          }
+        },
+
+        copyDM() {
+          navigator.clipboard.writeText(this.dmContent).then(() => {
+            alert('DM copied to clipboard!');
+            this.updateLeadStatus(this.selectedLead.id, 'contacted');
+          });
+        },
+
+        async updateLeadStatus(leadId, status) {
+          try {
+            await fetch(`/api/leads/${leadId}/status`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status })
+            });
+          } catch (error) {
+            console.error('Error updating lead status:', error);
+          }
+        }
+      };
+    }
+  </script>
+</body>
+</html> 
