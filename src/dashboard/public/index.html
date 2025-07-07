@@ -95,6 +95,22 @@
       transition: all 0.3s;
     }
     
+    .lead-card.contacted {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+    
+    .lead-card.too-hard {
+      background: #fef3c7;
+      border-color: #f59e0b;
+    }
+    
+    .lead-card.deleted {
+      background: #fef2f2;
+      border-color: #ef4444;
+      opacity: 0.6;
+    }
+    
     .lead-card:hover {
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
@@ -140,6 +156,24 @@
     
     .btn-secondary:hover {
       background: #d4d4d4;
+    }
+    
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+    
+    .btn-warning:hover {
+      background: #d97706;
+    }
+    
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #dc2626;
     }
     
     .dm-modal {
@@ -358,12 +392,20 @@
         <div class="value" id="readyToContact">0</div>
       </div>
       <div class="stat-card">
-        <h3>Emails Sent Today</h3>
-        <div class="value" id="emailsSent">0</div>
+        <h3>Emails Sent Total</h3>
+        <div class="value" id="emailsSentTotal">0</div>
       </div>
       <div class="stat-card">
-        <h3>DMs to Send</h3>
-        <div class="value" id="dmsToSend">0</div>
+        <h3>Emails Sent Today</h3>
+        <div class="value" id="emailsSentToday">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>DMs Sent Total</h3>
+        <div class="value" id="dmsSentTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <h3>DMs Sent Today</h3>
+        <div class="value" id="dmsSentToday">0</div>
       </div>
     </div>
     
@@ -373,6 +415,7 @@
           <button class="tab active" onclick="showTab('email')">Email Leads</button>
           <button class="tab" onclick="showTab('instagram')">Instagram DMs</button>
           <button class="tab" onclick="showTab('all')">All Leads</button>
+          <button class="tab" onclick="showTab('deleted')">Deleted</button>
         </div>
         
         <div style="display: flex; gap: 1rem;">
@@ -414,12 +457,16 @@
       <h3>Template Version:</h3>
       <div class="dm-preview" id="templateDM"></div>
       <button class="copy-btn" onclick="copyToClipboard('templateDM')">Copy Template DM</button>
+      <button class="btn btn-primary" onclick="markDMSent('template')">✓ Mark Template DM as Sent</button>
       
       <h3>AI Version:</h3>
       <div class="dm-preview" id="aiDM"></div>
       <button class="copy-btn" onclick="copyToClipboard('aiDM')">Copy AI DM</button>
+      <button class="btn btn-primary" onclick="markDMSent('ai')">✓ Mark AI DM as Sent</button>
       
-      <button class="btn btn-secondary" onclick="closeDMModal()">Close</button>
+      <div style="margin-top: 1rem; border-top: 1px solid #e5e5e5; padding-top: 1rem;">
+        <button class="btn btn-secondary" onclick="closeDMModal()">Close</button>
+      </div>
     </div>
   </div>
   
@@ -566,13 +613,42 @@
     
     function updateStats() {
       const filteredNew = currentLeads.filter(l => l.status === 'new');
+      const today = new Date().toDateString();
+      
+      // Calculate total emails and DMs sent (all time)
+      const emailsSentTotal = currentLeads.filter(l => {
+        return l.status === 'contacted' && 
+               l.email && 
+               (l.notes?.includes('Email sent') || l.lastContactedAt);
+      }).length;
+      
+      const dmsSentTotal = currentLeads.filter(l => {
+        return l.status === 'contacted' && 
+               l.instagramHandle && 
+               (l.notes?.includes('DM sent') || l.lastContactedAt);
+      }).length;
+      
+      // Calculate emails and DMs sent today
+      const emailsSentToday = currentLeads.filter(l => {
+        return l.status === 'contacted' && 
+               l.email && 
+               l.lastContactedAt && 
+               new Date(l.lastContactedAt).toDateString() === today;
+      }).length;
+      
+      const dmsSentToday = currentLeads.filter(l => {
+        return l.status === 'contacted' && 
+               l.instagramHandle && 
+               l.lastContactedAt && 
+               new Date(l.lastContactedAt).toDateString() === today;
+      }).length;
       
       document.getElementById('totalLeads').textContent = currentLeads.length;
       document.getElementById('readyToContact').textContent = filteredNew.length;
-      document.getElementById('emailsSent').textContent = 
-        currentLeads.filter(l => l.status === 'contacted' && l.email).length;
-      document.getElementById('dmsToSend').textContent = 
-        filteredNew.filter(l => l.instagramHandle).length;
+      document.getElementById('emailsSentTotal').textContent = emailsSentTotal;
+      document.getElementById('emailsSentToday').textContent = emailsSentToday;
+      document.getElementById('dmsSentTotal').textContent = dmsSentTotal;
+      document.getElementById('dmsSentToday').textContent = dmsSentToday;
     }
     
     function showTab(tab) {
@@ -587,9 +663,14 @@
       let filteredLeads = currentLeads;
       
       if (currentTab === 'email') {
-        filteredLeads = currentLeads.filter(l => l.email && l.status === 'new');
+        filteredLeads = currentLeads.filter(l => l.email && l.status !== 'deleted');
       } else if (currentTab === 'instagram') {
-        filteredLeads = currentLeads.filter(l => l.instagramHandle && l.status === 'new');
+        filteredLeads = currentLeads.filter(l => l.instagramHandle && l.status !== 'deleted');
+      } else if (currentTab === 'deleted') {
+        filteredLeads = currentLeads.filter(l => l.status === 'deleted');
+      } else {
+        // For 'all' tab, show all non-deleted leads
+        filteredLeads = currentLeads.filter(l => l.status !== 'deleted');
       }
       
       if (filteredLeads.length === 0) {
@@ -610,8 +691,14 @@
           contactInfo.push(`📧 <span style="color: #666; font-style: italic;">No email in bio</span>`);
         }
         
+        // Determine card styling class based on status
+        let cardClass = 'lead-card';
+        if (lead.status === 'contacted') cardClass += ' contacted';
+        else if (lead.status === 'too-hard') cardClass += ' too-hard';
+        else if (lead.status === 'deleted') cardClass += ' deleted';
+        
         return `
-          <div class="lead-card">
+          <div class="${cardClass}">
             <div class="lead-info">
               <h4>${lead.businessName}</h4>
               <p><strong>Category:</strong> ${lead.category || 'N/A'}</p>
@@ -637,9 +724,21 @@
                   Find Email
                 </button>
               ` : ''}
-              <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
-                Mark Contacted
-              </button>
+              ${lead.status !== 'contacted' ? `
+                <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
+                  Mark Contacted
+                </button>
+              ` : ''}
+              ${lead.status !== 'too-hard' ? `
+                <button class="btn btn-warning" onclick="markTooHard('${lead.id}')">
+                  Too Hard
+                </button>
+              ` : ''}
+              ${lead.status !== 'deleted' ? `
+                <button class="btn btn-danger" onclick="deleteLead('${lead.id}')">
+                  Delete
+                </button>
+              ` : ''}
             </div>
           </div>
         `;
@@ -667,9 +766,13 @@
       }
     }
     
+    let currentDMLeadId = null;
+    
     async function generateDM(leadId) {
       const lead = allLeads.find(l => l.id === leadId);
       if (!lead) return;
+      
+      currentDMLeadId = leadId;
       
       try {
         const response = await fetch('/api/generate-dm', {
@@ -691,6 +794,41 @@
     
     function closeDMModal() {
       document.getElementById('dmModal').classList.remove('active');
+      currentDMLeadId = null;
+    }
+    
+    async function markDMSent(version) {
+      if (!currentDMLeadId) return;
+      
+      try {
+        const response = await fetch('/api/send-dm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            leadId: currentDMLeadId,
+            version: version // 'template' or 'ai'
+          })
+        });
+        
+        if (response.ok) {
+          alert(`✅ DM marked as sent! (${version} version)`);
+          
+          // Update the lead status locally
+          const lead = allLeads.find(l => l.id === currentDMLeadId);
+          if (lead) {
+            lead.status = 'contacted';
+            lead.lastContactedAt = new Date();
+          }
+          
+          // Close modal and refresh view
+          closeDMModal();
+          filterLeads();
+        } else {
+          alert('Failed to mark DM as sent');
+        }
+      } catch (error) {
+        alert('Failed to mark DM as sent');
+      }
     }
     
     function copyToClipboard(elementId) {
@@ -715,6 +853,44 @@
         }
       } catch (error) {
         alert('Failed to update status');
+      }
+    }
+    
+    async function markTooHard(leadId) {
+      try {
+        const response = await fetch(`/api/leads/${leadId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'too-hard' })
+        });
+        
+        if (response.ok) {
+          const lead = allLeads.find(l => l.id === leadId);
+          if (lead) lead.status = 'too-hard';
+          filterLeads();
+        }
+      } catch (error) {
+        alert('Failed to mark as too hard');
+      }
+    }
+    
+    async function deleteLead(leadId) {
+      if (confirm('Are you sure you want to delete this lead?')) {
+        try {
+          const response = await fetch(`/api/leads/${leadId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'deleted' })
+          });
+          
+          if (response.ok) {
+            const lead = allLeads.find(l => l.id === leadId);
+            if (lead) lead.status = 'deleted';
+            filterLeads();
+          }
+        } catch (error) {
+          alert('Failed to delete lead');
+        }
       }
     }
     

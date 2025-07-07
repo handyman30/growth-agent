@@ -97,9 +97,27 @@ app.post('/api/send-email', async (req, res) => {
     const template = getTemplateForCategory(lead.category);
     const result = await sendEmail(lead, template.id);
     
+    // If email was sent successfully, mark as contacted
+    if (result.success) {
+      await updateLeadStatus(lead.id, 'contacted', 'Email sent');
+    }
+    
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+app.post('/api/send-dm', async (req, res) => {
+  try {
+    const { leadId } = req.body;
+    
+    // Mark the lead as contacted with DM sent note
+    await updateLeadStatus(leadId, 'contacted', 'DM sent');
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to mark DM as sent' });
   }
 });
 

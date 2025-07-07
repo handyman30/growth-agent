@@ -169,30 +169,49 @@ export async function getLeadsForOutreach(limit: number = 50): Promise<Lead[]> {
       sort: [{field: 'Created At', direction: 'desc'}]
     }).all();
     
-    return records.map(record => ({
-      id: record.id,
-      businessName: record.get('Business Name') as string,
-      ownerName: record.get('Owner Name') as string,
-      email: record.get('Email') as string,
-      phone: record.get('Phone') as string,
-      instagramHandle: record.get('Instagram Handle') as string,
-      website: record.get('Website') as string,
-      address: record.get('Address') as string,
-      bio: record.get('Bio') as string,
-      description: record.get('Description') as string,
-      followerCount: record.get('Follower Count') as number,
-      rating: record.get('Rating') as number,
-      reviewCount: record.get('Review Count') as number,
-      category: record.get('Category') as string,
-      city: record.get('City') as string,
-      location: record.get('Location') as string,
-      status: record.get('Status') as Lead['status'],
-      source: record.get('Source') as Lead['source'],
-      recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
-      businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
-      createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
-      updatedAt: new Date(),
-    }));
+    return records.map(record => {
+      const airtableStatus = record.get('Status') as string;
+      const notes = record.get('Notes') as string || '';
+      
+      // Map Airtable status back to frontend status based on notes
+      let frontendStatus: Lead['status'] = airtableStatus as Lead['status'];
+      if (airtableStatus === 'closed') {
+        if (notes.includes('Marked as too hard')) {
+          frontendStatus = 'too-hard';
+        } else if (notes.includes('Deleted')) {
+          frontendStatus = 'deleted';
+        } else {
+          frontendStatus = 'closed';
+        }
+      }
+      
+      return {
+        id: record.id,
+        businessName: record.get('Business Name') as string,
+        ownerName: record.get('Owner Name') as string,
+        email: record.get('Email') as string,
+        phone: record.get('Phone') as string,
+        instagramHandle: record.get('Instagram Handle') as string,
+        website: record.get('Website') as string,
+        address: record.get('Address') as string,
+        bio: record.get('Bio') as string,
+        description: record.get('Description') as string,
+        followerCount: record.get('Follower Count') as number,
+        rating: record.get('Rating') as number,
+        reviewCount: record.get('Review Count') as number,
+        category: record.get('Category') as string,
+        city: record.get('City') as string,
+        location: record.get('Location') as string,
+        status: frontendStatus,
+        source: record.get('Source') as Lead['source'],
+        recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
+        businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
+        createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
+        updatedAt: new Date(),
+        lastContactedAt: record.get('Last Contacted At') ? new Date(record.get('Last Contacted At') as string) : undefined,
+        notes,
+      };
+    });
   } catch (error) {
     console.error('❌ Error fetching from Airtable:', error);
     return [];
@@ -208,30 +227,49 @@ export async function getAllLeads(limit: number = 1000): Promise<Lead[]> {
       sort: [{field: 'Created At', direction: 'desc'}]
     }).all();
     
-    return records.map(record => ({
-      id: record.id,
-      businessName: record.get('Business Name') as string,
-      ownerName: record.get('Owner Name') as string,
-      email: record.get('Email') as string,
-      phone: record.get('Phone') as string,
-      instagramHandle: record.get('Instagram Handle') as string,
-      website: record.get('Website') as string,
-      address: record.get('Address') as string,
-      bio: record.get('Bio') as string,
-      description: record.get('Description') as string,
-      followerCount: record.get('Follower Count') as number,
-      rating: record.get('Rating') as number,
-      reviewCount: record.get('Review Count') as number,
-      category: record.get('Category') as string,
-      city: record.get('City') as string,
-      location: record.get('Location') as string,
-      status: record.get('Status') as Lead['status'],
-      source: record.get('Source') as Lead['source'],
-      recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
-      businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
-      createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
-      updatedAt: new Date(),
-    }));
+    return records.map(record => {
+      const airtableStatus = record.get('Status') as string;
+      const notes = record.get('Notes') as string || '';
+      
+      // Map Airtable status back to frontend status based on notes
+      let frontendStatus: Lead['status'] = airtableStatus as Lead['status'];
+      if (airtableStatus === 'closed') {
+        if (notes.includes('Marked as too hard')) {
+          frontendStatus = 'too-hard';
+        } else if (notes.includes('Deleted')) {
+          frontendStatus = 'deleted';
+        } else {
+          frontendStatus = 'closed';
+        }
+      }
+      
+      return {
+        id: record.id,
+        businessName: record.get('Business Name') as string,
+        ownerName: record.get('Owner Name') as string,
+        email: record.get('Email') as string,
+        phone: record.get('Phone') as string,
+        instagramHandle: record.get('Instagram Handle') as string,
+        website: record.get('Website') as string,
+        address: record.get('Address') as string,
+        bio: record.get('Bio') as string,
+        description: record.get('Description') as string,
+        followerCount: record.get('Follower Count') as number,
+        rating: record.get('Rating') as number,
+        reviewCount: record.get('Review Count') as number,
+        category: record.get('Category') as string,
+        city: record.get('City') as string,
+        location: record.get('Location') as string,
+        status: frontendStatus,
+        source: record.get('Source') as Lead['source'],
+        recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
+        businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
+        createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
+        updatedAt: new Date(),
+        lastContactedAt: record.get('Last Contacted At') ? new Date(record.get('Last Contacted At') as string) : undefined,
+        notes,
+      };
+    });
   } catch (error) {
     console.error('❌ Error fetching from Airtable:', error);
     return [];
@@ -244,9 +282,27 @@ export async function updateLeadStatus(
   notes?: string
 ): Promise<void> {
   try {
+    // Map our frontend statuses to Airtable-compatible statuses
+    let airtableStatus: string;
+    let statusNotes = notes || '';
+    
+    switch (status) {
+      case 'too-hard':
+        airtableStatus = 'closed';
+        statusNotes = statusNotes ? `${statusNotes} (Marked as too hard)` : 'Marked as too hard to contact';
+        break;
+      case 'deleted':
+        airtableStatus = 'closed';
+        statusNotes = statusNotes ? `${statusNotes} (Deleted)` : 'Lead deleted';
+        break;
+      default:
+        airtableStatus = status;
+        break;
+    }
+    
     const updateData: any = {
-      'Status': status,
-      ...(notes && { 'Notes': notes }),
+      'Status': airtableStatus,
+      ...(statusNotes && { 'Notes': statusNotes }),
     };
     
     // Only update Last Contacted At if the status is 'contacted'
@@ -256,7 +312,7 @@ export async function updateLeadStatus(
     }
     
     await table.update(leadId, updateData);
-    console.log(`✅ Updated lead ${leadId} status to ${status}`);
+    console.log(`✅ Updated lead ${leadId} status to ${status} (Airtable: ${airtableStatus})`);
   } catch (error) {
     console.error(`❌ Error updating lead ${leadId}:`, error);
     // Don't throw, just log the error

@@ -234,3 +234,6 @@ MIT License - see LICENSE file for details
 ---
 
 **Built with ❤️ by HandyLabs** 
+
+
+**TODO ENSURE SCRAPER FOR IG IS IMPROVE AND GOOGLE AS WELL**
