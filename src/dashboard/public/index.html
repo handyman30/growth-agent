@@ -205,6 +205,100 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    .refresh-btn:active {
+      transform: rotate(360deg);
+    }
+    
+    .info-banner {
+      background: #dbeafe;
+      border: 1px solid #3b82f6;
+      color: #1e40af;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: start;
+      gap: 1rem;
+    }
+    
+    .info-banner .icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .info-banner strong {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    
+    .enrichment-section {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .hunter-credits {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .credit-badge {
+      background: #e5e5e5;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    
+    .credit-badge.low {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    
+    .credit-badge.good {
+      background: #d1fae5;
+      color: #059669;
+    }
+    
+    .btn-enrich {
+      background: #8b5cf6;
+      color: white;
+    }
+    
+    .btn-enrich:hover {
+      background: #7c3aed;
+    }
+    
+    .enrich-progress {
+      display: none;
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+    
+    .enrich-progress.show {
+      display: block;
+    }
+    
+    .progress-bar {
+      background: #e5e5e5;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      background: #8b5cf6;
+      height: 100%;
+      transition: width 0.3s;
+    }
   </style>
 </head>
 <body>
@@ -216,6 +310,44 @@
   </div>
   
   <div class="container">
+    <div class="info-banner">
+      <div class="icon">ℹ️</div>
+      <div>
+        <strong>About Email Addresses:</strong><br>
+        • Instagram scraper can extract emails from bios when available<br>
+        • Google Maps doesn't provide email addresses directly - you'll need to visit their websites manually or use an email finder service<br>
+        • Focus on Instagram for email collection, use Google Maps for phone/website data
+      </div>
+    </div>
+    
+    <div class="enrichment-section">
+      <div>
+        <h3>Email Enrichment</h3>
+        <p>Use Hunter.io to find emails for businesses with websites</p>
+        <div class="hunter-credits">
+          <span>Hunter Credits:</span>
+          <span class="credit-badge" id="hunterCredits">Loading...</span>
+        </div>
+      </div>
+      <div>
+        <button class="btn btn-enrich" onclick="enrichAllEmails()">
+          🔍 Enrich 10 Leads
+        </button>
+        <button class="btn btn-secondary" onclick="checkCredits()">
+          🔄 Refresh Credits
+        </button>
+      </div>
+    </div>
+    
+    <div class="enrich-progress" id="enrichProgress">
+      <h4>Enrichment Progress</h4>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+      </div>
+      <p id="enrichStatus">Starting...</p>
+      <div id="enrichResults" style="margin-top: 1rem; max-height: 200px; overflow-y: auto;"></div>
+    </div>
+    
     <div class="stats">
       <div class="stat-card">
         <h3>Total Leads</h3>
@@ -297,6 +429,94 @@
     let currentTab = 'email';
     let availableCategories = new Set();
     
+    // Check Hunter credits on load
+    checkCredits();
+    
+    async function checkCredits() {
+      try {
+        const response = await fetch('/api/hunter-credits');
+        const credits = await response.json();
+        
+        const creditsElement = document.getElementById('hunterCredits');
+        const available = credits.available || 0;
+        const used = credits.used || 0;
+        
+        creditsElement.textContent = `${available} available / ${used} used`;
+        creditsElement.className = available > 10 ? 'credit-badge good' : 'credit-badge low';
+      } catch (error) {
+        document.getElementById('hunterCredits').textContent = 'Error loading';
+      }
+    }
+    
+    async function enrichAllEmails() {
+      const progressDiv = document.getElementById('enrichProgress');
+      const statusElement = document.getElementById('enrichStatus');
+      const resultsElement = document.getElementById('enrichResults');
+      const progressFill = document.getElementById('progressFill');
+      
+      progressDiv.classList.add('show');
+      statusElement.textContent = 'Starting email enrichment...';
+      resultsElement.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/enrich-all-emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ limit: 10 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          statusElement.textContent = `✅ Enriched ${result.enrichedCount} out of ${result.totalProcessed} leads`;
+          progressFill.style.width = '100%';
+          
+          // Show results
+          result.results.forEach(r => {
+            const div = document.createElement('div');
+            div.style.padding = '0.5rem';
+            div.style.borderBottom = '1px solid #e5e5e5';
+            
+            if (r.success) {
+              div.innerHTML = `✅ <strong>${r.lead}</strong>: ${r.email}`;
+            } else {
+              div.innerHTML = `❌ <strong>${r.lead}</strong>: No email found`;
+            }
+            
+            resultsElement.appendChild(div);
+          });
+          
+          // Reload leads and check credits
+          await loadLeads();
+          await checkCredits();
+        } else {
+          statusElement.textContent = '❌ Enrichment failed';
+        }
+      } catch (error) {
+        statusElement.textContent = '❌ Error during enrichment';
+      }
+    }
+    
+    async function enrichSingleLead(leadId) {
+      try {
+        const response = await fetch(`/api/leads/${leadId}/enrich-email`, {
+          method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`✅ Found email: ${result.email}`);
+          await loadLeads();
+          await checkCredits();
+        } else {
+          alert('❌ No email found for this business');
+        }
+      } catch (error) {
+        alert('Failed to enrich email');
+      }
+    }
+    
     async function loadLeads() {
       try {
         const response = await fetch('/api/leads');
@@ -377,34 +597,53 @@
         return;
       }
       
-      container.innerHTML = filteredLeads.map(lead => `
-        <div class="lead-card">
-          <div class="lead-info">
-            <h4>${lead.businessName}</h4>
-            <p><strong>Category:</strong> ${lead.category || 'N/A'}</p>
-            <p><strong>City:</strong> ${lead.city || 'N/A'}</p>
-            <p><strong>Source:</strong> ${lead.source}</p>
-            <p><strong>Contact:</strong> ${lead.email || lead.phone || '@' + lead.instagramHandle}</p>
-            ${lead.rating ? `<p><strong>Rating:</strong> ⭐ ${lead.rating}/5 (${lead.reviewCount || 0} reviews)</p>` : ''}
-            <p><strong>Status:</strong> ${lead.status}</p>
-          </div>
-          <div class="lead-actions">
-            ${lead.email ? `
-              <button class="btn btn-primary" onclick="sendEmail('${lead.id}')">
-                Send Email
+      container.innerHTML = filteredLeads.map(lead => {
+        const contactInfo = [];
+        if (lead.phone) contactInfo.push(`📞 ${lead.phone}`);
+        if (lead.website) contactInfo.push(`🌐 <a href="${lead.website}" target="_blank">Website</a>`);
+        if (lead.instagramHandle) contactInfo.push(`📷 @${lead.instagramHandle}`);
+        if (lead.email) {
+          contactInfo.push(`📧 ${lead.email}`);
+        } else if (lead.source === 'google') {
+          contactInfo.push(`📧 <span style="color: #666; font-style: italic;">No email from Google Maps</span>`);
+        } else if (lead.source === 'instagram' && !lead.email) {
+          contactInfo.push(`📧 <span style="color: #666; font-style: italic;">No email in bio</span>`);
+        }
+        
+        return `
+          <div class="lead-card">
+            <div class="lead-info">
+              <h4>${lead.businessName}</h4>
+              <p><strong>Category:</strong> ${lead.category || 'N/A'}</p>
+              <p><strong>City:</strong> ${lead.city || 'N/A'}</p>
+              <p><strong>Source:</strong> ${lead.source}</p>
+              <p><strong>Contact:</strong> ${contactInfo.join(', ')}</p>
+              ${lead.rating ? `<p><strong>Rating:</strong> ⭐ ${lead.rating}/5 (${lead.reviewCount || 0} reviews)</p>` : ''}
+              <p><strong>Status:</strong> ${lead.status}</p>
+            </div>
+            <div class="lead-actions">
+              ${lead.email ? `
+                <button class="btn btn-primary" onclick="sendEmail('${lead.id}')">
+                  Send Email
+                </button>
+              ` : ''}
+              ${lead.instagramHandle ? `
+                <button class="btn btn-primary" onclick="generateDM('${lead.id}')">
+                  Generate DM
+                </button>
+              ` : ''}
+              ${!lead.email && lead.website ? `
+                <button class="btn btn-enrich" onclick="enrichSingleLead('${lead.id}')">
+                  Find Email
+                </button>
+              ` : ''}
+              <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
+                Mark Contacted
               </button>
-            ` : ''}
-            ${lead.instagramHandle ? `
-              <button class="btn btn-primary" onclick="generateDM('${lead.id}')">
-                Generate DM
-              </button>
-            ` : ''}
-            <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
-              Mark Contacted
-            </button>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     }
     
     async function sendEmail(leadId) {

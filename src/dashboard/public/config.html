@@ -30,6 +30,22 @@
       padding: 2rem;
     }
     
+    .schedule-banner {
+      background: #fef3c7;
+      border: 1px solid #fbbf24;
+      color: #92400e;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .schedule-banner .icon {
+      font-size: 2rem;
+    }
+    
     .config-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -94,6 +110,7 @@
       margin-top: 1rem;
       display: flex;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
     
     .btn {
@@ -103,6 +120,9 @@
       cursor: pointer;
       font-size: 0.875rem;
       transition: all 0.3s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     
     .btn-primary {
@@ -127,6 +147,20 @@
     .btn-success {
       background: #10b981;
       color: white;
+    }
+    
+    .btn-run {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    .btn-run:hover {
+      background: #2563eb;
+    }
+    
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
     
     .add-config {
@@ -197,30 +231,45 @@
       line-height: 1;
     }
     
-    .modal {
-      display: none;
+    .notification {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
+      top: 20px;
+      right: 20px;
+      background: white;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: none;
       align-items: center;
-      justify-content: center;
+      gap: 1rem;
+      z-index: 1000;
     }
     
-    .modal.active {
+    .notification.success {
+      border-left: 4px solid #10b981;
+    }
+    
+    .notification.error {
+      border-left: 4px solid #ef4444;
+    }
+    
+    .notification.show {
       display: flex;
     }
     
-    .modal-content {
-      background: white;
-      border-radius: 8px;
-      padding: 2rem;
-      max-width: 600px;
-      width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
@@ -233,6 +282,14 @@
   </div>
   
   <div class="container">
+    <div class="schedule-banner">
+      <div class="icon">⏰</div>
+      <div>
+        <strong>Automatic Scraping Schedule:</strong><br>
+        Daily at 8:00 AM Melbourne time (active configurations only)
+      </div>
+    </div>
+    
     <div class="add-config">
       <h2>Create New Configuration</h2>
       <form id="configForm">
@@ -292,23 +349,41 @@
     </div>
   </div>
   
+  <div class="notification" id="notification">
+    <span id="notificationMessage"></span>
+  </div>
+  
   <script>
     let configs = [];
-    let cities = [];
-    let categories = [];
-    let keywords = [];
+    let currentCities = [];
+    let currentCategories = [];
+    let currentKeywords = [];
+    
+    // Show notification
+    function showNotification(message, type = 'success') {
+      const notification = document.getElementById('notification');
+      const messageEl = document.getElementById('notificationMessage');
+      
+      notification.className = `notification ${type} show`;
+      messageEl.textContent = message;
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 5000);
+    }
     
     // Tag management
-    function addTag(container, array, value) {
+    function addTag(containerEl, arrayName, value) {
+      const array = window[arrayName];
       if (value && !array.includes(value)) {
         array.push(value);
-        renderTags(container, array);
+        renderTags(containerEl, array);
       }
     }
     
-    function removeTag(container, array, index) {
+    function removeTag(containerEl, array, index) {
       array.splice(index, 1);
-      renderTags(container, array);
+      renderTags(containerEl, array);
     }
     
     function renderTags(container, array) {
@@ -320,7 +395,7 @@
         tagEl.className = 'tag';
         tagEl.innerHTML = `
           ${tag}
-          <button onclick="removeTag(document.getElementById('${container.id}'), ${container.id.replace('Input', '')}, ${index})">×</button>
+          <button onclick="removeTag(document.getElementById('${container.id}'), ${container.id === 'citiesInput' ? 'currentCities' : container.id === 'categoriesInput' ? 'currentCategories' : 'currentKeywords'}, ${index})">×</button>
         `;
         container.appendChild(tagEl);
       });
@@ -329,18 +404,28 @@
     }
     
     // Setup tag inputs
-    ['city', 'category', 'keyword'].forEach(type => {
-      const input = document.getElementById(`${type}Input`);
-      const container = document.getElementById(`${type}sInput`);
-      const array = window[`${type === 'keyword' ? 'keyword' : type === 'city' ? 'citie' : 'categorie'}s`];
-      
-      input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          addTag(container, array, input.value.trim());
-          input.value = '';
-        }
-      });
+    document.getElementById('cityInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTag(document.getElementById('citiesInput'), 'currentCities', e.target.value.trim());
+        e.target.value = '';
+      }
+    });
+    
+    document.getElementById('categoryInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTag(document.getElementById('categoriesInput'), 'currentCategories', e.target.value.trim());
+        e.target.value = '';
+      }
+    });
+    
+    document.getElementById('keywordInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addTag(document.getElementById('keywordsInput'), 'currentKeywords', e.target.value.trim());
+        e.target.value = '';
+      }
     });
     
     // Load configurations
@@ -369,14 +454,18 @@
           </div>
           
           <div class="config-details">
-            <p><strong>Sources:</strong> ${config.sources.join(', ')}</p>
-            <p><strong>Cities:</strong> ${config.cities.join(', ')}</p>
-            <p><strong>Categories:</strong> ${config.categories.join(', ')}</p>
-            ${config.keywords.length > 0 ? `<p><strong>Keywords:</strong> ${config.keywords.join(', ')}</p>` : ''}
-            <p><strong>Max Results:</strong> ${config.maxResultsPerSearch} per search</p>
+            <p><strong>Sources:</strong> ${(config.sources || []).join(', ')}</p>
+            <p><strong>Cities:</strong> ${(config.cities || []).join(', ')}</p>
+            <p><strong>Categories:</strong> ${(config.categories || []).join(', ')}</p>
+            ${config.keywords && config.keywords.length > 0 ? `<p><strong>Keywords:</strong> ${config.keywords.join(', ')}</p>` : ''}
+            <p><strong>Max Results:</strong> ${config.maxResultsPerSearch || 30} per search</p>
+            ${config.active ? '<p style="color: #059669; margin-top: 0.5rem;">✓ Included in automatic daily scraping</p>' : ''}
           </div>
           
           <div class="config-actions">
+            <button class="btn btn-run" onclick="runScraper('${config.id}')" id="runBtn-${config.id}">
+              <span>▶</span> Run Now
+            </button>
             <button class="btn ${config.active ? 'btn-danger' : 'btn-success'}" 
                     onclick="toggleConfig('${config.id}', ${!config.active})">
               ${config.active ? 'Deactivate' : 'Activate'}
@@ -387,6 +476,36 @@
           </div>
         </div>
       `).join('');
+    }
+    
+    // Run scraper manually
+    async function runScraper(configId) {
+      const config = configs.find(c => c.id === configId);
+      if (!config) return;
+      
+      const button = document.getElementById(`runBtn-${configId}`);
+      button.disabled = true;
+      button.innerHTML = '<div class="spinner"></div> Running...';
+      
+      showNotification(`Starting scraper for "${config.name}"...`, 'success');
+      
+      try {
+        const response = await fetch(`/api/configs/${configId}/run`, {
+          method: 'POST'
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          showNotification(`✅ Scraping completed! Found ${result.totalLeads} leads.`, 'success');
+        } else {
+          throw new Error('Failed to run scraper');
+        }
+      } catch (error) {
+        showNotification('❌ Failed to run scraper', 'error');
+      } finally {
+        button.disabled = false;
+        button.innerHTML = '<span>▶</span> Run Now';
+      }
     }
     
     // Form submission
@@ -401,12 +520,12 @@
         return;
       }
       
-      if (cities.length === 0) {
+      if (currentCities.length === 0) {
         alert('Please add at least one city');
         return;
       }
       
-      if (categories.length === 0) {
+      if (currentCategories.length === 0) {
         alert('Please add at least one category');
         return;
       }
@@ -414,9 +533,9 @@
       const config = {
         name: document.getElementById('configName').value,
         sources,
-        cities,
-        categories,
-        keywords,
+        cities: currentCities,
+        categories: currentCategories,
+        keywords: currentKeywords,
         maxResultsPerSearch: parseInt(document.getElementById('maxResults').value),
         active: true,
       };
@@ -429,18 +548,18 @@
         });
         
         if (response.ok) {
-          alert('Configuration created successfully!');
+          showNotification('Configuration created successfully!', 'success');
           document.getElementById('configForm').reset();
-          cities = [];
-          categories = [];
-          keywords = [];
-          renderTags(document.getElementById('citiesInput'), cities);
-          renderTags(document.getElementById('categoriesInput'), categories);
-          renderTags(document.getElementById('keywordsInput'), keywords);
+          currentCities = [];
+          currentCategories = [];
+          currentKeywords = [];
+          renderTags(document.getElementById('citiesInput'), currentCities);
+          renderTags(document.getElementById('categoriesInput'), currentCategories);
+          renderTags(document.getElementById('keywordsInput'), currentKeywords);
           loadConfigs();
         }
       } catch (error) {
-        alert('Failed to create configuration');
+        showNotification('Failed to create configuration', 'error');
       }
     });
     
@@ -454,9 +573,10 @@
         
         if (response.ok) {
           loadConfigs();
+          showNotification(active ? 'Configuration activated' : 'Configuration deactivated', 'success');
         }
       } catch (error) {
-        alert('Failed to update configuration');
+        showNotification('Failed to update configuration', 'error');
       }
     }
     
@@ -470,9 +590,10 @@
         
         if (response.ok) {
           loadConfigs();
+          showNotification('Configuration deleted', 'success');
         }
       } catch (error) {
-        alert('Failed to delete configuration');
+        showNotification('Failed to delete configuration', 'error');
       }
     }
     

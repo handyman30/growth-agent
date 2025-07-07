@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getLeadsForOutreach, updateLeadStatus } from '../utils/airtable.js';
+import { getLeadsForOutreach, getAllLeads, updateLeadStatus, updateLeadEmail } from '../utils/airtable.js';
 import { generateInstagramDM } from '../utils/message-generator.js';
 import { getPersonalizedDM } from '../templates/instagram-dm-templates.js';
 import { sendEmail } from '../email/sender.js';
@@ -10,6 +10,12 @@ import { getTemplateForCategory } from '../templates/email-templates.js';
 import { loadSearchConfigs, saveSearchConfigs, addSearchConfig, updateSearchConfig, deleteSearchConfig } from '../utils/search-config.js';
 import { getStatus } from '../utils/system-status.js';
 import { Lead, SearchConfig } from '../types/index.js';
+import { enrichLeadWithEmail, checkHunterCredits } from '../utils/email-enrichment.js';
+import { agentScheduler } from '../agents/scheduler.js';
+import { improvementAgent } from '../agents/improvement-agent.js';
+import { githubPRAgent } from '../agents/github-pr-agent.js';
+import path from 'path';
+import fs from 'fs/promises';
 
 dotenv.config();
 
@@ -29,7 +35,8 @@ app.get('/api/leads', async (req, res) => {
     const city = req.query.city as string;
     const category = req.query.category as string;
     
-    let leads = await getLeadsForOutreach(100);
+    // Use getAllLeads to show all leads including Google Maps ones
+    let leads = await getAllLeads(500);
     
     // Filter by query parameters
     if (source) leads = leads.filter(l => l.source === source);
@@ -133,6 +140,159 @@ app.delete('/api/configs/:id', async (req, res) => {
   }
 });
 
+// Manual scraper run endpoint
+app.post('/api/configs/:id/run', async (req, res) => {
+  try {
+    const configs = await loadSearchConfigs();
+    const config = configs.find(c => c.id === req.params.id);
+    
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration not found' });
+    }
+    
+    console.log(`🎯 Manual run initiated for: ${config.name}`);
+    
+    // Import scrapers
+    const { scrapeInstagramForLeads } = await import('../scrapers/instagram.js');
+    const { scrapeGoogleForLeads } = await import('../scrapers/google.js');
+    const { saveLeadsToAirtable } = await import('../utils/airtable.js');
+    
+    const allLeads: Lead[] = [];
+    
+    // Run Instagram scraping if enabled
+    if (config.sources.includes('instagram')) {
+      for (const keyword of config.keywords || []) {
+        try {
+          const leads = await scrapeInstagramForLeads(keyword, config.maxResultsPerSearch || 30);
+          allLeads.push(...leads);
+        } catch (error) {
+          console.error(`Error scraping Instagram for ${keyword}:`, error);
+        }
+      }
+    }
+    
+    // Run Google Maps scraping if enabled
+    if (config.sources.includes('google')) {
+      for (const city of config.cities) {
+        for (const category of config.categories) {
+          try {
+            const leads = await scrapeGoogleForLeads(city, category, config.maxResultsPerSearch || 30);
+            allLeads.push(...leads);
+          } catch (error) {
+            console.error(`Error scraping Google Maps for ${category} in ${city}:`, error);
+          }
+        }
+      }
+    }
+    
+    // Remove duplicates
+    const uniqueLeads = Array.from(
+      new Map(allLeads.map(lead => 
+        [`${lead.businessName}-${lead.address || lead.instagramHandle}`, lead]
+      )).values()
+    );
+    
+    // Save to Airtable
+    if (uniqueLeads.length > 0) {
+      await saveLeadsToAirtable(uniqueLeads);
+    }
+    
+    res.json({
+      success: true,
+      totalLeads: uniqueLeads.length,
+      breakdown: {
+        instagram: allLeads.filter(l => l.source === 'instagram').length,
+        google: allLeads.filter(l => l.source === 'google').length,
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error running manual scraper:', error);
+    res.status(500).json({ error: 'Failed to run scraper' });
+  }
+});
+
+// Email enrichment endpoint
+app.post('/api/leads/:id/enrich-email', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get the lead
+    const leads = await getAllLeads(1000);
+    const lead = leads.find(l => l.id === id);
+    
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead not found' });
+    }
+    
+    // Enrich with email
+    const email = await enrichLeadWithEmail(lead);
+    
+    if (email) {
+      await updateLeadEmail(id, email);
+      res.json({ success: true, email });
+    } else {
+      res.json({ success: false, message: 'No email found' });
+    }
+  } catch (error) {
+    console.error('Error enriching lead:', error);
+    res.status(500).json({ error: 'Failed to enrich lead' });
+  }
+});
+
+// Bulk email enrichment endpoint
+app.post('/api/enrich-all-emails', async (req, res) => {
+  try {
+    const { limit = 10 } = req.body;
+    
+    // Get leads without emails but with websites
+    const leads = await getAllLeads(1000);
+    const leadsToEnrich = leads
+      .filter(l => !l.email && l.website)
+      .slice(0, limit);
+    
+    console.log(`🎯 Enriching ${leadsToEnrich.length} leads with emails...`);
+    
+    let enrichedCount = 0;
+    const results = [];
+    
+    for (const lead of leadsToEnrich) {
+      const email = await enrichLeadWithEmail(lead);
+      
+      if (email) {
+        await updateLeadEmail(lead.id, email);
+        enrichedCount++;
+        results.push({ lead: lead.businessName, email, success: true });
+      } else {
+        results.push({ lead: lead.businessName, success: false });
+      }
+      
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    
+    res.json({
+      success: true,
+      enrichedCount,
+      totalProcessed: leadsToEnrich.length,
+      results
+    });
+  } catch (error) {
+    console.error('Error in bulk enrichment:', error);
+    res.status(500).json({ error: 'Failed to enrich emails' });
+  }
+});
+
+// Hunter credits check endpoint
+app.get('/api/hunter-credits', async (req, res) => {
+  try {
+    const credits = await checkHunterCredits();
+    res.json(credits || { available: 0, used: 0 });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check credits' });
+  }
+});
+
 // API endpoint for system status
 app.get('/api/system-status', async (req, res) => {
   try {
@@ -158,7 +318,8 @@ app.get('/api/errors', async (req, res) => {
 // API endpoint for dashboard stats
 app.get('/api/stats', async (req, res) => {
   try {
-    const leads = await getLeadsForOutreach(1000);
+    // Use getAllLeads for accurate stats
+    const leads = await getAllLeads(1000);
     
     const stats = {
       total: leads.length,
@@ -193,6 +354,78 @@ app.get('/api/stats', async (req, res) => {
     res.json(stats);
   } catch (error) {
     res.status(500).json({ error: 'Failed to get statistics' });
+  }
+});
+
+// Agent management endpoints
+app.get('/api/agents/schedules', (req, res) => {
+  try {
+    const schedules = agentScheduler.getSchedules();
+    res.json(schedules);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get schedules' });
+  }
+});
+
+app.post('/api/agents/schedules/:name/toggle', (req, res) => {
+  try {
+    const { name } = req.params;
+    const { enabled } = req.body;
+    
+    agentScheduler.updateSchedule(name, enabled);
+    res.json({ success: true, enabled });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update schedule' });
+  }
+});
+
+app.post('/api/agents/analyze', async (req, res) => {
+  try {
+    console.log('🔍 Manual analysis requested');
+    
+    await improvementAgent.runDailyAnalysis();
+    const report = await improvementAgent.createImprovementReport();
+    
+    res.json({ 
+      success: true, 
+      message: 'Analysis completed',
+      report 
+    });
+  } catch (error) {
+    console.error('Error in manual analysis:', error);
+    res.status(500).json({ error: 'Analysis failed' });
+  }
+});
+
+app.post('/api/agents/improve', async (req, res) => {
+  try {
+    console.log('🔧 Manual improvements requested');
+    
+    await githubPRAgent.runAutomatedImprovements();
+    
+    res.json({ 
+      success: true, 
+      message: 'Improvements processed' 
+    });
+  } catch (error) {
+    console.error('Error in manual improvements:', error);
+    res.status(500).json({ error: 'Improvements failed' });
+  }
+});
+
+app.get('/api/agents/suggestions', async (req, res) => {
+  try {
+    const suggestionsFile = path.join(process.cwd(), 'data/improvement-suggestions.json');
+    
+    try {
+      const data = await fs.readFile(suggestionsFile, 'utf-8');
+      const suggestions = JSON.parse(data);
+      res.json(suggestions);
+    } catch (fileError) {
+      res.json({ suggestions: [], analysis: null, generatedAt: null });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get suggestions' });
   }
 });
 

@@ -1,0 +1,28 @@
+{
+  "id": "recW6wYNCA2jUKpBN",
+  "businessName": "Maha Restaurant",
+  "phone": "+61 3 9629 5900",
+  "website": "http://maharestaurant.com.au/",
+  "address": "21 Bond St, Melbourne VIC 3000, Australia",
+  "description": "Stylish and contemporary setting for creative Middle Eastern fine dining meals by chef Shane Delia.",
+  "followerCount": 0,
+  "rating": 4.5,
+  "reviewCount": 2543,
+  "category": "Middle Eastern restaurant",
+  "city": "melbourne",
+  "location": "21 Bond St, Melbourne VIC 3000, Australia",
+  "status": "new",
+  "source": "google",
+  "recentPosts": [],
+  "businessHours": {
+    "Monday": "12 to 11 PM",
+    "Tuesday": "12 to 11 PM",
+    "Wednesday": "12 to 11 PM",
+    "Thursday": "12 to 11 PM",
+    "Friday": "12 to 11 PM",
+    "Saturday": "12 to 11 PM",
+    "Sunday": "12 to 11 PM"
+  },
+  "createdAt": "2025-07-06T17:11:51.446Z",
+  "updatedAt": "2025-07-06T17:11:51.446Z"
+}

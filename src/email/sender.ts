@@ -15,6 +15,14 @@ export async function sendEmail(
   templateId: string
 ): Promise<OutreachMessage> {
   try {
+    // Validate environment variables
+    if (!process.env.SENDGRID_API_KEY) {
+      throw new Error('SENDGRID_API_KEY is not configured');
+    }
+    if (!process.env.FROM_EMAIL) {
+      throw new Error('FROM_EMAIL is not configured');
+    }
+    
     // Generate personalized email
     const { subject, body } = await generatePersonalizedEmail(lead, templateId);
     
@@ -35,25 +43,65 @@ export async function sendEmail(
       },
     };
 
+    console.log(`📧 Attempting to send email to ${lead.email} from ${process.env.FROM_EMAIL}`);
+    
     // Send email
     const [response] = await sgMail.send(msg);
     
-    console.log(`✅ Email sent to ${lead.businessName} (${lead.email})`);
+    console.log(`✅ SendGrid Response:`, {
+      statusCode: response.statusCode,
+      headers: response.headers,
+      body: response.body
+    });
     
-    // Update lead status
-    if (lead.id) {
-      await updateLeadStatus(lead.id, 'contacted', `Email sent with template: ${templateId}`);
+    // Only consider it sent if we get a 202 status
+    if (response.statusCode === 202) {
+      console.log(`✅ Email successfully queued for ${lead.businessName} (${lead.email})`);
+      
+      // Update lead status
+      if (lead.id) {
+        try {
+          await updateLeadStatus(lead.id, 'contacted', `Email sent with template: ${templateId}`);
+        } catch (statusError) {
+          console.error('⚠️  Failed to update lead status:', statusError);
+        }
+      }
+      
+      return {
+        leadId: lead.id!,
+        type: 'email',
+        subject,
+        content: body,
+        status: 'sent',
+        sentAt: new Date(),
+      };
+    } else {
+      console.error(`❌ Unexpected SendGrid response:`, response.statusCode);
+      throw new Error(`SendGrid returned status ${response.statusCode}`);
+    }
+  } catch (error: any) {
+    console.error(`❌ Email failed for ${lead.businessName}:`, {
+      message: error.message,
+      code: error.code,
+      response: error.response?.body || error.response
+    });
+    
+    // Check for specific SendGrid errors
+    if (error.response?.body?.errors) {
+      console.error('SendGrid errors:', error.response.body.errors);
     }
     
-    return {
-      leadId: lead.id!,
-      type: 'email',
-      subject,
-      content: body,
-      status: 'sent',
-      sentAt: new Date(),
-    };
-  } catch (error: any) {
+    // Common issues
+    if (error.message?.includes('The from address does not match a verified Sender')) {
+      console.error(`
+⚠️  IMPORTANT: Your sender email "${process.env.FROM_EMAIL}" is not verified in SendGrid!
+Please:
+1. Log into SendGrid
+2. Go to Settings > Sender Authentication
+3. Verify the email address "${process.env.FROM_EMAIL}"
+`);
+    }
+    
     const serviceError = handleAPIError(error, 'SendGrid');
     logServiceError(serviceError);
     
