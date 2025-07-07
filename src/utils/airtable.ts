@@ -190,6 +190,7 @@ export async function getLeadsForOutreach(limit: number = 50): Promise<Lead[]> {
       source: record.get('Source') as Lead['source'],
       recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
       businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
+      notes: record.get('Notes') as string,
       createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
       updatedAt: new Date(),
     }));
@@ -229,6 +230,7 @@ export async function getAllLeads(limit: number = 1000): Promise<Lead[]> {
       source: record.get('Source') as Lead['source'],
       recentPosts: record.get('Recent Posts') ? JSON.parse(record.get('Recent Posts') as string) : [],
       businessHours: record.get('Business Hours') ? JSON.parse(record.get('Business Hours') as string) : undefined,
+      notes: record.get('Notes') as string,
       createdAt: record.get('Created At') ? new Date(record.get('Created At') as string) : new Date(),
       updatedAt: new Date(),
     }));
@@ -251,15 +253,30 @@ export async function updateLeadStatus(
     
     // Only update Last Contacted At if the status is 'contacted'
     if (status === 'contacted') {
-      // Airtable expects ISO string format
-      updateData['Last Contacted At'] = new Date().toISOString();
+      // Try different date formats for Airtable compatibility
+      const now = new Date();
+      updateData['Last Contacted At'] = now.toISOString().split('T')[0]; // YYYY-MM-DD format
     }
     
     await table.update(leadId, updateData);
     console.log(`✅ Updated lead ${leadId} status to ${status}`);
   } catch (error) {
     console.error(`❌ Error updating lead ${leadId}:`, error);
-    // Don't throw, just log the error
+    
+    // If date format fails, try without the date
+    if ((error as Error).message?.includes('Last Contacted At')) {
+      try {
+        const updateDataWithoutDate: any = {
+          'Status': status,
+          ...(notes && { 'Notes': notes }),
+        };
+        
+        await table.update(leadId, updateDataWithoutDate);
+        console.log(`✅ Updated lead ${leadId} status to ${status} (without date)`);
+      } catch (retryError) {
+        console.error(`❌ Failed to update lead ${leadId} even without date:`, retryError);
+      }
+    }
   }
 }
 
@@ -275,5 +292,15 @@ export async function updateLeadEmail(
     console.log(`✅ Updated lead ${leadId} with email: ${email}`);
   } catch (error) {
     console.error(`❌ Error updating lead ${leadId} with email:`, error);
+  }
+}
+
+export async function deleteLead(leadId: string): Promise<void> {
+  try {
+    await table.destroy(leadId);
+    console.log(`✅ Deleted lead ${leadId}`);
+  } catch (error) {
+    console.error(`❌ Error deleting lead ${leadId}:`, error);
+    throw error;
   }
 } 

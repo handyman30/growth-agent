@@ -18,7 +18,7 @@ export interface Lead {
   location: string; // Full address
   recentPosts?: InstagramPost[];
   businessHours?: Record<string, string>;
-  status: 'new' | 'contacted' | 'replied' | 'qualified' | 'hot_lead' | 'closed';
+  status: 'new' | 'contacted' | 'replied' | 'qualified' | 'hot_lead' | 'closed' | 'too-hard';
   lastContactedAt?: Date;
   notes?: string;
   createdAt: Date;

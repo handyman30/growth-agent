@@ -12,32 +12,102 @@ const client = new ApifyClient({
   token: process.env.APIFY_API_TOKEN,
 });
 
-// Melbourne business hashtags
+// Melbourne business hashtags - expanded for more diversity
 const MELBOURNE_HASHTAGS = [
+  // Food & Beverage
   'melbournecafe',
   'melbournecoffee',
   'melbournefoodie',
-  'melbournebusiness',
-  'melbournesmallbusiness',
   'melbournerestaurant',
+  'melbourneeats',
+  'melbournebar',
+  'melbournepizza',
+  'melbournebrunch',
+  
+  // Retail & Fashion
   'melbourneboutique',
+  'melbournefashion',
+  'melbourneshopping',
+  'melbourneretail',
+  'melbournestore',
+  
+  // Health & Wellness
   'melbournefitness',
   'melbournewellness',
+  'melbourneyoga',
+  'melbournegym',
+  'melbournehealth',
+  'melbournebeauty',
+  'melbournesalon',
+  'melbournespa',
+  'melbournehaircut',
+  'melbournetattoo',
+  'melbournepiercing',
+  'melbournenails',
+  'melbournemassage',
+  'melbournephysio',
+  'melbournedental',
+  
+  // Business & Services
+  'melbournebusiness',
+  'melbournesmallbusiness',
   'melbourneentrepreneur',
+  'melbournestartup',
+  'melbourneservices',
+  'melbournephotographer',
+  'melbournedesign',
+  'melbourneplumber',
+  'melbourneelectrician',
+  'melbournecarpenter',
+  'melbournecleaner',
+  'melbourneaccountant',
+  'melbournelawyer',
+  'melbourneconsultant',
+  
+  // General Melbourne
+  'melbourne',
+  'melbournelife',
+  'melbournecity',
+  'visitmelbourne',
 ];
 
-// Keywords to identify businesses vs personal accounts
+// Keywords to identify businesses vs personal accounts - expanded
 const BUSINESS_KEYWORDS = [
-  'cafe', 'coffee', 'restaurant', 'boutique', 'studio', 'salon',
-  'shop', 'store', 'wellness', 'fitness', 'yoga', 'pilates',
-  'photography', 'design', 'agency', 'consulting', 'services',
-  'business', 'company', 'melbourne', 'australia', 'contact',
-  'dm', 'book', 'order', 'delivery', 'open', 'hours'
+  // Food & Beverage
+  'cafe', 'coffee', 'restaurant', 'bar', 'pub', 'bistro', 'eatery',
+  'bakery', 'pizza', 'burger', 'sushi', 'thai', 'italian', 'chinese',
+  'brunch', 'breakfast', 'lunch', 'dinner', 'catering', 'food', 'drinks',
+  
+  // Retail & Shopping
+  'boutique', 'shop', 'store', 'retail', 'fashion', 'clothing', 'apparel',
+  'accessories', 'jewelry', 'jewellery', 'handmade', 'vintage', 'online',
+  
+  // Health & Wellness
+  'wellness', 'fitness', 'gym', 'yoga', 'pilates', 'health', 'nutrition',
+  'salon', 'spa', 'beauty', 'hair', 'haircut', 'hairdresser', 'barber',
+  'nails', 'makeup', 'skincare', 'massage', 'therapy', 'clinic', 'medical', 
+  'dental', 'physio', 'physiotherapy', 'tattoo', 'piercing', 'tattooist',
+  
+  // Professional Services
+  'studio', 'photography', 'design', 'agency', 'consulting', 'services',
+  'business', 'company', 'office', 'professional', 'freelance', 'creative',
+  'marketing', 'digital', 'web', 'social', 'media', 'pr', 'events',
+  'plumber', 'electrician', 'carpenter', 'cleaner', 'cleaning', 'accountant',
+  'lawyer', 'solicitor', 'consultant', 'tradesman', 'tradesperson',
+  
+  // Location & Contact
+  'melbourne', 'australia', 'melb', 'aus', 'location', 'based',
+  'contact', 'dm', 'book', 'order', 'delivery', 'open', 'hours',
+  'appointment', 'bookings', 'enquiries', 'info', 'call', 'email',
+  
+  // Business Indicators
+  'est', 'since', 'serving', 'specialising', 'offering', 'providing',
+  'available', 'now', 'new', 'opening', 'coming', 'soon'
 ];
 
 export async function scrapeInstagramForLeads(
   hashtag: string,
-  maxResults: number = 50
+  maxResults: number = 100
 ): Promise<Lead[]> {
   console.log(`🔍 Scraping Instagram for: ${hashtag}`);
   
@@ -128,14 +198,26 @@ function isBusinessAccount(item: any): boolean {
   );
   
   // Check for business indicators
-  const hasWebsite = bio.includes('www.') || bio.includes('.com') || bio.includes('.au');
+  const hasWebsite = bio.includes('www.') || bio.includes('.com') || bio.includes('.au') || 
+                    bio.includes('.co') || bio.includes('.net') || bio.includes('.org');
   const hasEmail = bio.includes('@');
-  const hasPhone = /\d{8,}/.test(bio); // Has phone number
+  const hasPhone = /\d{8,}/.test(bio) || /\d{4}\s?\d{4}/.test(bio); // Has phone number
+  const hasEmoji = /[📍📞📧🏢🏪🏬🍴☕🍕🍔🥗💪🧘💇💅💈🎨🔧⚡🧹📊⚖️]/.test(bio); // Business emojis
   const isVerified = item.ownerIsVerified;
-  const hasHighFollowers = item.ownerFollowersCount > 1000;
+  const hasGoodFollowers = item.ownerFollowersCount > 500; // Lower threshold
   
-  // Business if has keywords OR has contact info OR is verified with good following
-  return hasBusinessKeyword || hasWebsite || hasEmail || hasPhone || (isVerified && hasHighFollowers);
+  // Count positive indicators
+  let score = 0;
+  if (hasBusinessKeyword) score += 2;
+  if (hasWebsite) score += 2;
+  if (hasEmail) score += 2;
+  if (hasPhone) score += 1;
+  if (hasEmoji) score += 1;
+  if (isVerified) score += 1;
+  if (hasGoodFollowers) score += 1;
+  
+  // Business if score >= 2 (more flexible)
+  return score >= 2;
 }
 
 function convertToLead(item: any): Lead {
@@ -190,11 +272,43 @@ function extractWebsiteFromBio(bio: string): string | undefined {
 function categorizeBusinessType(bio: string): Lead['category'] {
   const bioLower = bio?.toLowerCase() || '';
   
-  if (bioLower.includes('cafe') || bioLower.includes('coffee')) return 'cafe';
-  if (bioLower.includes('restaurant') || bioLower.includes('dining')) return 'restaurant';
-  if (bioLower.includes('boutique') || bioLower.includes('fashion')) return 'boutique';
-  if (bioLower.includes('influencer') || bioLower.includes('blogger')) return 'influencer';
-  if (bioLower.includes('service') || bioLower.includes('consulting')) return 'service';
+  // Food & Beverage
+  if (bioLower.includes('cafe') || bioLower.includes('coffee') || bioLower.includes('espresso')) return 'cafe';
+  if (bioLower.includes('restaurant') || bioLower.includes('dining') || bioLower.includes('eatery')) return 'restaurant';
+  if (bioLower.includes('bar') || bioLower.includes('pub') || bioLower.includes('cocktail')) return 'bar';
+  if (bioLower.includes('bakery') || bioLower.includes('patisserie')) return 'bakery';
+  if (bioLower.includes('pizza') || bioLower.includes('burger') || bioLower.includes('takeaway')) return 'fastfood';
+  
+  // Retail & Fashion
+  if (bioLower.includes('boutique') || bioLower.includes('fashion') || bioLower.includes('clothing')) return 'boutique';
+  if (bioLower.includes('jewelry') || bioLower.includes('jewellery') || bioLower.includes('accessories')) return 'jewelry';
+  if (bioLower.includes('vintage') || bioLower.includes('thrift') || bioLower.includes('secondhand')) return 'vintage';
+  
+  // Health & Wellness
+  if (bioLower.includes('fitness') || bioLower.includes('gym') || bioLower.includes('training')) return 'fitness';
+  if (bioLower.includes('yoga') || bioLower.includes('pilates') || bioLower.includes('meditation')) return 'wellness';
+  if (bioLower.includes('salon') || bioLower.includes('hair') || bioLower.includes('barber') || bioLower.includes('haircut') || bioLower.includes('hairdresser')) return 'haircut';
+  if (bioLower.includes('beauty') || bioLower.includes('makeup') || bioLower.includes('skincare')) return 'beauty';
+  if (bioLower.includes('spa') || bioLower.includes('massage') || bioLower.includes('therapy')) return 'massage';
+  if (bioLower.includes('tattoo') || bioLower.includes('piercing') || bioLower.includes('tattooist')) return 'tattoo';
+  if (bioLower.includes('physio') || bioLower.includes('physiotherapy') || bioLower.includes('rehabilitation')) return 'physio';
+  if (bioLower.includes('dental') || bioLower.includes('dentist') || bioLower.includes('orthodontist')) return 'dental';
+  
+  // Professional Services
+  if (bioLower.includes('photography') || bioLower.includes('photographer') || bioLower.includes('photo')) return 'photography';
+  if (bioLower.includes('design') || bioLower.includes('creative') || bioLower.includes('studio')) return 'design';
+  if (bioLower.includes('marketing') || bioLower.includes('digital') || bioLower.includes('agency')) return 'marketing';
+  if (bioLower.includes('consulting') || bioLower.includes('consultant') || bioLower.includes('advisory')) return 'consulting';
+  if (bioLower.includes('plumber') || bioLower.includes('plumbing')) return 'plumber';
+  if (bioLower.includes('electrician') || bioLower.includes('electrical')) return 'electrician';
+  if (bioLower.includes('carpenter') || bioLower.includes('carpentry')) return 'carpenter';
+  if (bioLower.includes('cleaner') || bioLower.includes('cleaning')) return 'cleaner';
+  if (bioLower.includes('accountant') || bioLower.includes('accounting') || bioLower.includes('bookkeeping')) return 'accountant';
+  if (bioLower.includes('lawyer') || bioLower.includes('solicitor') || bioLower.includes('legal')) return 'lawyer';
+  
+  // Others
+  if (bioLower.includes('influencer') || bioLower.includes('blogger') || bioLower.includes('content')) return 'influencer';
+  if (bioLower.includes('service') || bioLower.includes('business')) return 'service';
   
   return 'other';
 }
@@ -226,7 +340,7 @@ export async function scrapeInstagramDaily(): Promise<void> {
     console.log('────────────────────────────────────────');
     
     try {
-      const leads = await scrapeInstagramForLeads(hashtag, 10); // 10 per hashtag
+      const leads = await scrapeInstagramForLeads(hashtag, 30); // 30 per hashtag
       
       if (leads.length > 0) {
         console.log(`✅ Success! Found ${leads.length} leads`);
@@ -280,9 +394,99 @@ export async function scrapeInstagramDaily(): Promise<void> {
   });
 }
 
+// Function to run a quick targeted scrape
+export async function runTargetedInstagramScrape(
+  categories: string[] = ['cafe', 'restaurant', 'boutique', 'fitness', 'beauty', 'haircut', 'tattoo', 'massage', 'physio', 'plumber', 'electrician', 'cleaner', 'accountant'],
+  leadsPerCategory: number = 10
+): Promise<void> {
+  console.log('🚀 Starting targeted Instagram scraping...');
+  console.log(`📊 Target: ${leadsPerCategory} leads per category`);
+  console.log(`📊 Categories: ${categories.join(', ')}`);
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  
+  const categoryHashtags: Record<string, string[]> = {
+    cafe: ['melbournecafe', 'melbournecoffee', 'melbournebrunch'],
+    restaurant: ['melbournerestaurant', 'melbourneeats', 'melbournefoodie'],
+    boutique: ['melbourneboutique', 'melbournefashion', 'melbourneshopping'],
+    fitness: ['melbournefitness', 'melbournegym', 'melbourneyoga'],
+    beauty: ['melbournebeauty', 'melbournesalon', 'melbournespa'],
+    bar: ['melbournebar', 'melbournepub', 'melbournedrinks'],
+    wellness: ['melbournewellness', 'melbournehealth', 'melbourneyoga'],
+    photography: ['melbournephotographer', 'melbournephotography'],
+    design: ['melbournedesign', 'melbournecreative'],
+    haircut: ['melbournehaircut', 'melbournebarber', 'melbournehairdresser'],
+    tattoo: ['melbournetattoo', 'melbournepiercing', 'melbournetattooist'],
+    massage: ['melbournemassage', 'melbournetherapy', 'melbournespa'],
+    physio: ['melbournephysio', 'melbournephysiotherapy', 'melbournehealth'],
+    dental: ['melbournedental', 'melbournedentist', 'melbournehealth'],
+    plumber: ['melbourneplumber', 'melbournetrades', 'melbourneservices'],
+    electrician: ['melbourneelectrician', 'melbournetrades', 'melbourneservices'],
+    cleaner: ['melbournecleaner', 'melbournecleaning', 'melbourneservices'],
+    accountant: ['melbourneaccountant', 'melbournebusiness', 'melbourneservices'],
+    lawyer: ['melbournelawyer', 'melbournesolicitor', 'melbourneservices'],
+  };
+  
+  let totalLeadsFound = 0;
+  
+  for (const category of categories) {
+    const hashtags = categoryHashtags[category] || [`melbourne${category}`];
+    console.log(`\n📍 Scraping ${category.toUpperCase()} businesses...`);
+    
+    let categoryLeads: Lead[] = [];
+    
+    for (const hashtag of hashtags) {
+      if (categoryLeads.length >= leadsPerCategory) break;
+      
+      console.log(`   🔍 Trying #${hashtag}...`);
+      
+      try {
+        const leads = await scrapeInstagramForLeads(hashtag, 50);
+        const relevantLeads = leads.filter(lead => 
+          lead.category === category || lead.category === 'other'
+        );
+        
+        categoryLeads.push(...relevantLeads);
+        console.log(`   ✅ Found ${relevantLeads.length} ${category} leads`);
+        
+        // Small delay between hashtags
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.log(`   ❌ Failed to scrape #${hashtag}`);
+      }
+    }
+    
+    // Take only the required number
+    categoryLeads = categoryLeads.slice(0, leadsPerCategory);
+    
+    if (categoryLeads.length > 0) {
+      console.log(`💾 Saving ${categoryLeads.length} ${category} leads...`);
+      try {
+        await saveLeadsToAirtable(categoryLeads);
+        totalLeadsFound += categoryLeads.length;
+        console.log(`✅ Saved successfully!`);
+      } catch (error) {
+        console.error(`⚠️ Failed to save some leads`);
+      }
+    }
+  }
+  
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`📊 Total leads found: ${totalLeadsFound}`);
+  console.log('✅ Targeted scraping completed');
+}
+
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  scrapeInstagramDaily()
-    .then(() => console.log('✅ Scraping completed'))
-    .catch(error => console.error('❌ Scraping failed:', error));
+  // Check if specific mode is requested
+  const mode = process.argv[2];
+  
+  if (mode === 'targeted') {
+    runTargetedInstagramScrape()
+      .then(() => console.log('✅ Targeted scraping completed'))
+      .catch(error => console.error('❌ Scraping failed:', error));
+  } else {
+    scrapeInstagramDaily()
+      .then(() => console.log('✅ Daily scraping completed'))
+      .catch(error => console.error('❌ Scraping failed:', error));
+  }
 } 

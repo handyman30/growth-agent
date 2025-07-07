@@ -1,50 +1,50 @@
 export const instagramDMTemplates = {
   cafe: [
-    "Hey! Your {recent_post} looks amazing 🤤 We help Melbourne cafes boost online orders. Mind if I share a quick idea?",
-    "Love your coffee art! ☕ We build ordering apps for cafes - helped similar spots 2x their morning sales. Interested?",
-    "Your {menu_item} caught my eye! 🔥 We create custom apps for Melb cafes. Worth a quick chat?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   influencer: [
-    "Hey {name}! Your {content_type} content is 🔥 Looking for Melbourne influencers to partner with. Interested?",
-    "Love your vibe! We build apps/sites for businesses & offer 20% commission for referrals. Let's chat? 🚀",
-    "Your {recent_achievement} was incredible! 👏 We're HandyLabs - keen to discuss a partnership?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could work together. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've got some ideas on how software can help grow your business. Worth a chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   boutique: [
-    "Your {product} collection is stunning! 😍 We build e-commerce sites for Melb boutiques. Can I share some ideas?",
-    "Hey! Love your style 🛍️ We help boutiques like yours sell online. Mind if I send some examples?",
-    "Amazing curation! We create custom online stores for Melbourne boutiques. Interested in growing online?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   restaurant: [
-    "That {dish} looks incredible! 🍴 We build ordering systems for Melbourne restaurants. Worth exploring?",
-    "Your menu is 🔥! We help restaurants streamline online orders. Can I share how?",
-    "Love what you're doing! We create custom apps for Melb restaurants. Quick chat?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   service: [
-    "Hey! Your {service} looks professional 💼 We build booking systems for service businesses. Interested?",
-    "Love your work! We help Melbourne businesses automate bookings. Mind if I share more?",
-    "Great {recent_work}! 👏 We create custom tools for service providers. Let's connect?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   fitness: [
-    "Your {class/workout} looks intense! 💪 We build booking apps for fitness studios. Worth discussing?",
-    "Love the energy! 🏃 We help gyms manage memberships & bookings online. Interested?",
-    "Amazing transformation posts! We create custom apps for fitness businesses. Chat?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   general: [
-    "Hey {business_name}! Love what you're doing 👀 We help Melb businesses grow online. Interested?",
-    "Your content is great! 🙌 We build custom digital solutions. Mind if I share some ideas?",
-    "Impressive work! We're HandyLabs - we create apps/sites for local businesses. Let's chat?",
+    "Hey! We build software for Australian businesses. Found {business_name} and reckon we could help improve your operations. Let's chat?",
+    "Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?",
+    "Hey {business_name}! We build software for Aussie businesses. Let's have a chat about how we can help?",
   ],
   
   followUp: [
-    "Hey! Just floating this back up 😊 Still keen to help {business_name} grow online!",
-    "Hi again! Know you're busy but genuinely think we could help. Worth a quick chat?",
-    "Following up! 👋 Got some great ideas for {business_name}. Free to discuss?",
+    "Hey! Just following up - still keen to help {business_name} with software. Let's chat?",
+    "Hi again! Know you're busy but reckon we could help improve your operations. Worth a quick chat?",
+    "Following up! Still got ideas for {business_name}. Free to discuss?",
   ],
 };
 

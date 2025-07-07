@@ -30,7 +30,7 @@ export async function generatePersonalizedEmail(
     recentPosts: lead.recentPosts || [],
   };
 
-  const prompt = `You are helping personalize an email template for HandyLabs, a Melbourne-based company that builds custom apps and websites for local businesses.
+  const prompt = `You are helping personalize an email template for HandyLabs, a Melbourne-based company that builds software for Australian businesses.
 
 Lead Information:
 - Business: ${context.businessName}
@@ -46,11 +46,11 @@ Body: ${template.body}
 
 Instructions:
 1. Replace all placeholders (in {brackets}) with specific, relevant information
-2. For {recentPostDetail}, mention something specific from their recent posts
-3. For {specificMenuItemOrFeature}, reference something from their bio or posts
-4. For {contentTheme}, identify their main content focus
-5. Keep the tone friendly, professional, and locally relevant
-6. Make it feel personal, not like a mass email
+2. Keep the tone direct, Australian, and no-nonsense
+3. Focus on being straightforward - no spam, no fluff
+4. Emphasize that we build software for Australian businesses
+5. Keep it simple and to the point
+6. Use Australian English and local references
 7. Keep the same structure and key points as the template
 
 Output the personalized email in this format:
@@ -88,7 +88,7 @@ BODY: [personalized body]`;
 }
 
 export async function generateInstagramDM(lead: Lead): Promise<string> {
-  const prompt = `Generate a personalized Instagram DM for HandyLabs to send to a Melbourne business.
+  const prompt = `Generate a personalized Instagram DM for HandyLabs to send to an Australian business.
 
 Business: ${lead.businessName}
 Bio: ${lead.bio}
@@ -97,15 +97,15 @@ Recent Post: ${lead.recentPosts?.[0]?.caption || 'No recent posts'}
 
 Guidelines:
 - Keep it under 150 characters (Instagram best practice)
-- Mention something specific about their business
-- Include a soft call-to-action
-- Use casual, friendly tone with 1-2 emojis max
-- Don't be salesy or pushy
-- Focus on providing value
+- Be direct and Australian - no spam, no fluff
+- Focus on software for Australian businesses
+- Use casual, friendly tone with minimal emojis
+- Keep it simple and straightforward
+- Emphasize we build software for Aussie businesses
 
 Example good DMs:
-"Hey! Your matcha latte art is incredible 🍵 We help cafes like yours boost online orders. Mind if I share a quick idea?"
-"Love your vintage collection! 🔥 We build custom sites for Melb boutiques. Keen to see how we helped similar stores?"`;
+"Hey! We build software for Australian businesses. Found ${lead.businessName} and reckon we could help improve your operations. Let's chat?"
+"Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?"`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -154,20 +154,11 @@ function fallbackPersonalization(lead: Lead, template: EmailTemplate): { subject
 }
 
 function generateFallbackDM(lead: Lead): string {
-  const intros = [
-    `Hey! Love what you're doing at ${lead.businessName} 🙌`,
-    `Your ${lead.category} content is amazing! 🔥`,
-    `Hey ${lead.businessName}! Your posts caught my eye 👀`,
+  const templates = [
+    `Hey! We build software for Australian businesses. Found ${lead.businessName} and reckon we could help improve your operations. Let's chat?`,
+    `Hi! I'm Handy from HandyLabs.live - we've identified key areas where software can help your business. Worth a quick chat?`,
+    `Hey ${lead.businessName}! We build software for Aussie businesses. Let's have a chat about how we can help?`,
   ];
 
-  const outros = [
-    'We help Melb businesses grow online. Interested?',
-    'Got ideas for your digital presence. Chat?',
-    'Would love to help you reach more customers!',
-  ];
-
-  const intro = intros[Math.floor(Math.random() * intros.length)];
-  const outro = outros[Math.floor(Math.random() * outros.length)];
-
-  return `${intro} ${outro}`;
+  return templates[Math.floor(Math.random() * templates.length)];
 } 

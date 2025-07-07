@@ -84,6 +84,27 @@
       border-bottom-color: #6366f1;
     }
     
+    .tab.has-count {
+      position: relative;
+    }
+    
+    .tab.has-count::after {
+      content: attr(data-count);
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #dc2626;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+    
     .lead-card {
       border: 1px solid #e5e5e5;
       border-radius: 8px;
@@ -97,6 +118,54 @@
     
     .lead-card:hover {
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .lead-card.contacted {
+      background: #f0fdf4;
+      border-color: #22c55e;
+    }
+    
+    .lead-card.contacted .lead-info h4 {
+      color: #059669;
+    }
+    
+    .lead-card.too-hard {
+      background: #fef2f2;
+      border: 2px solid #dc2626;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+    }
+    
+    .lead-card.too-hard .lead-info h4 {
+      color: #dc2626;
+      font-weight: bold;
+    }
+    
+    .lead-card.too-hard .lead-info p {
+      color: #991b1b;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    
+    .status-badge.too-hard {
+      background: #dc2626;
+      color: white;
+    }
+    
+    .status-badge.contacted {
+      background: #059669;
+      color: white;
+    }
+    
+    .status-badge.new {
+      background: #3b82f6;
+      color: white;
     }
     
     .lead-info h4 {
@@ -140,6 +209,15 @@
     
     .btn-secondary:hover {
       background: #d4d4d4;
+    }
+    
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #b91c1c;
     }
     
     .dm-modal {
@@ -358,7 +436,7 @@
         <div class="value" id="readyToContact">0</div>
       </div>
       <div class="stat-card">
-        <h3>Emails Sent Today</h3>
+        <h3>Contacted Leads</h3>
         <div class="value" id="emailsSent">0</div>
       </div>
       <div class="stat-card">
@@ -372,6 +450,8 @@
         <div class="tabs">
           <button class="tab active" onclick="showTab('email')">Email Leads</button>
           <button class="tab" onclick="showTab('instagram')">Instagram DMs</button>
+          <button class="tab" onclick="showTab('contacted')">Emails Sent</button>
+          <button class="tab" onclick="showTab('too-hard')">Too Hard</button>
           <button class="tab" onclick="showTab('all')">All Leads</button>
         </div>
         
@@ -402,8 +482,11 @@
       </div>
     </div>
     
-    <div style="text-align: center; margin-top: 2rem;">
+    <div style="text-align: center; margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
       <a href="/config" class="btn btn-secondary">Manage Search Configurations</a>
+      <button class="btn btn-primary" onclick="runTargetedInstagramScrape()">
+        🔍 Quick Instagram Scrape (10 per category)
+      </button>
     </div>
   </div>
   
@@ -565,14 +648,35 @@
     }
     
     function updateStats() {
-      const filteredNew = currentLeads.filter(l => l.status === 'new');
+      const filteredNew = currentLeads.filter(l => getEffectiveStatus(l) === 'new');
+      const contactedLeads = currentLeads.filter(l => getEffectiveStatus(l) === 'contacted');
+      const tooHardLeads = currentLeads.filter(l => getEffectiveStatus(l) === 'too-hard');
       
       document.getElementById('totalLeads').textContent = currentLeads.length;
       document.getElementById('readyToContact').textContent = filteredNew.length;
-      document.getElementById('emailsSent').textContent = 
-        currentLeads.filter(l => l.status === 'contacted' && l.email).length;
+      document.getElementById('emailsSent').textContent = contactedLeads.length;
       document.getElementById('dmsToSend').textContent = 
         filteredNew.filter(l => l.instagramHandle).length;
+        
+      // Update the stat card title to show contacted count
+      const emailsSentCard = document.querySelector('.stat-card:nth-child(3) h3');
+      if (emailsSentCard) {
+        emailsSentCard.textContent = `Contacted (${contactedLeads.length})`;
+      }
+      
+      // Add visual indicator for too-hard leads in the tab
+      const tooHardTab = document.querySelector('.tab[onclick="showTab(\'too-hard\')"]');
+      if (tooHardTab) {
+        const count = tooHardLeads.length;
+        tooHardTab.textContent = 'Too Hard';
+        if (count > 0) {
+          tooHardTab.classList.add('has-count');
+          tooHardTab.setAttribute('data-count', count.toString());
+        } else {
+          tooHardTab.classList.remove('has-count');
+          tooHardTab.removeAttribute('data-count');
+        }
+      }
     }
     
     function showTab(tab) {
@@ -580,6 +684,17 @@
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       event.target.classList.add('active');
       renderLeads();
+    }
+    
+    function isTooHardLead(lead) {
+      return lead.notes && lead.notes.startsWith('TOO HARD:');
+    }
+    
+    function getEffectiveStatus(lead) {
+      if (isTooHardLead(lead)) {
+        return 'too-hard';
+      }
+      return lead.status;
     }
     
     function renderLeads() {
@@ -590,6 +705,10 @@
         filteredLeads = currentLeads.filter(l => l.email && l.status === 'new');
       } else if (currentTab === 'instagram') {
         filteredLeads = currentLeads.filter(l => l.instagramHandle && l.status === 'new');
+      } else if (currentTab === 'contacted') {
+        filteredLeads = currentLeads.filter(l => l.status === 'contacted');
+      } else if (currentTab === 'too-hard') {
+        filteredLeads = currentLeads.filter(l => isTooHardLead(l));
       }
       
       if (filteredLeads.length === 0) {
@@ -610,8 +729,9 @@
           contactInfo.push(`📧 <span style="color: #666; font-style: italic;">No email in bio</span>`);
         }
         
+        const effectiveStatus = getEffectiveStatus(lead);
         return `
-          <div class="lead-card">
+          <div class="lead-card ${effectiveStatus === 'contacted' ? 'contacted' : effectiveStatus === 'too-hard' ? 'too-hard' : ''}">
             <div class="lead-info">
               <h4>${lead.businessName}</h4>
               <p><strong>Category:</strong> ${lead.category || 'N/A'}</p>
@@ -619,26 +739,44 @@
               <p><strong>Source:</strong> ${lead.source}</p>
               <p><strong>Contact:</strong> ${contactInfo.join(', ')}</p>
               ${lead.rating ? `<p><strong>Rating:</strong> ⭐ ${lead.rating}/5 (${lead.reviewCount || 0} reviews)</p>` : ''}
-              <p><strong>Status:</strong> ${lead.status}</p>
+              <p><strong>Status:</strong> <span class="status-badge ${effectiveStatus}">${effectiveStatus}</span></p>
+              ${effectiveStatus === 'contacted' ? `<p><strong>Contacted:</strong> <span style="color: #059669; font-weight: bold;">✅ Yes</span></p>` : ''}
+              ${effectiveStatus === 'too-hard' && lead.notes ? `<p><strong>Reason:</strong> <span style="color: #dc2626; font-weight: bold;">${lead.notes.replace('TOO HARD: ', '')}</span></p>` : ''}
             </div>
             <div class="lead-actions">
-              ${lead.email ? `
+              ${lead.email && effectiveStatus === 'new' ? `
                 <button class="btn btn-primary" onclick="sendEmail('${lead.id}')">
                   Send Email
                 </button>
               ` : ''}
-              ${lead.instagramHandle ? `
+              ${lead.instagramHandle && effectiveStatus === 'new' ? `
                 <button class="btn btn-primary" onclick="generateDM('${lead.id}')">
                   Generate DM
                 </button>
               ` : ''}
-              ${!lead.email && lead.website ? `
+              ${!lead.email && lead.website && effectiveStatus === 'new' ? `
                 <button class="btn btn-enrich" onclick="enrichSingleLead('${lead.id}')">
                   Find Email
                 </button>
               ` : ''}
-              <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
-                Mark Contacted
+              ${effectiveStatus === 'new' ? `
+                <button class="btn btn-secondary" onclick="markContacted('${lead.id}')">
+                  Mark Contacted
+                </button>
+                <button class="btn btn-danger" onclick="markTooHard('${lead.id}')">
+                  🚫 Too Hard
+                </button>
+              ` : effectiveStatus === 'too-hard' ? `
+                <button class="btn btn-secondary" onclick="markNew('${lead.id}')">
+                  Mark New
+                </button>
+              ` : `
+                <button class="btn btn-secondary" onclick="markNew('${lead.id}')">
+                  Mark New
+                </button>
+              `}
+              <button class="btn btn-danger" onclick="deleteLead('${lead.id}')">
+                Delete
               </button>
             </div>
           </div>
@@ -718,6 +856,69 @@
       }
     }
     
+    async function markNew(leadId) {
+      try {
+        const response = await fetch(`/api/leads/${leadId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'new' })
+        });
+        
+        if (response.ok) {
+          const lead = allLeads.find(l => l.id === leadId);
+          if (lead) lead.status = 'new';
+          filterLeads();
+        }
+      } catch (error) {
+        alert('Failed to update status');
+      }
+    }
+    
+    async function markTooHard(leadId) {
+      const lead = allLeads.find(l => l.id === leadId);
+      const reason = prompt(`Why is ${lead?.businessName} too hard? (e.g., "Too big - franchise", "Already has advanced tech", "Not interested in outsourcing")`);
+      
+      if (!reason) return;
+      
+      try {
+        const response = await fetch(`/api/leads/${leadId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'too-hard', notes: reason })
+        });
+        
+        if (response.ok) {
+          if (lead) lead.status = 'too-hard';
+          filterLeads();
+        }
+      } catch (error) {
+        alert('Failed to update status');
+      }
+    }
+    
+    async function deleteLead(leadId) {
+      if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/leads/${leadId}`, {
+          method: 'DELETE'
+        });
+        
+        if (response.ok) {
+          // Remove from local array
+          allLeads = allLeads.filter(l => l.id !== leadId);
+          filterLeads();
+          alert('Lead deleted successfully');
+        } else {
+          alert('Failed to delete lead');
+        }
+      } catch (error) {
+        alert('Failed to delete lead');
+      }
+    }
+    
     // Load stats
     async function loadStats() {
       try {
@@ -727,6 +928,36 @@
         console.log('System Stats:', stats);
       } catch (error) {
         console.error('Failed to load stats:', error);
+      }
+    }
+    
+    // Run targeted Instagram scrape
+    async function runTargetedInstagramScrape() {
+      if (!confirm('This will run a targeted Instagram scrape for 10 leads per category (cafe, restaurant, boutique, fitness, beauty). Continue?')) {
+        return;
+      }
+      
+      const button = event.target;
+      button.disabled = true;
+      button.textContent = '⏳ Scraping... (this may take a few minutes)';
+      
+      try {
+        const response = await fetch('/api/instagram-scrape/targeted', {
+          method: 'POST'
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          alert(`✅ Scraping completed! Found ${result.totalLeads} new leads across ${result.categories.length} categories.`);
+          await loadLeads();
+        } else {
+          alert('❌ Scraping failed. Please check the logs.');
+        }
+      } catch (error) {
+        alert('❌ Failed to run scraper');
+      } finally {
+        button.disabled = false;
+        button.textContent = '🔍 Quick Instagram Scrape (10 per category)';
       }
     }
     

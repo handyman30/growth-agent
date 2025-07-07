@@ -4,77 +4,56 @@ export const emailTemplates: EmailTemplate[] = [
   {
     id: 'cafe-initial',
     name: 'Cafe Initial Outreach',
-    subject: 'Saw your amazing {recentPostDetail} at {businessName} 🥐',
+    subject: 'Quick question about {businessName}',
     body: `Hi {ownerName},
 
-Just discovered {businessName} through your Instagram - that {recentPostDetail} looked incredible!
+I'm Handy from HandyLabs.live - we build software for Australian businesses.
 
-I help Melbourne cafes like yours create custom ordering apps that boost takeaway revenue by 30%. 
+Found {businessName} and reckon we could help improve your operations. We've identified key areas where software can streamline things for cafes like yours.
 
-Quick example: Penny Drop Coffee in Carlton saw their morning rush orders double after launching their app - customers love ordering ahead and skipping the queue.
-
-Would love to show you how we could help {businessName} capture more orders (especially during those crazy morning rushes).
-
-Worth a quick coffee chat next week? I'm local and happy to come by.
+Let's have a chat? I'm local and can swing by for a coffee.
 
 Cheers,
-Handy Hasan
-HandyLabs.live
-P.S. Your {specificMenuItemOrFeature} sounds amazing - definitely need to try it!`,
+Handy
+handylabs.live`,
     category: 'cafe',
-    variables: ['businessName', 'ownerName', 'recentPostDetail', 'specificMenuItemOrFeature'],
+    variables: ['businessName', 'ownerName'],
   },
   {
     id: 'influencer-initial',
     name: 'Influencer Initial Outreach',
-    subject: 'Love your content! Partnership opportunity 🚀',
-    body: `Hey {ownerName}!
+    subject: 'Partnership idea for {businessName}',
+    body: `Hi {ownerName},
 
-Been following your journey on @{instagramHandle} - your {contentTheme} content is 🔥
+I'm Handy from HandyLabs.live - we build software for Australian businesses.
 
-I run HandyLabs, and we're looking for Melbourne influencers to partner with. We build custom apps and websites for local businesses, and think your audience would love what we do.
+Found {businessName} and reckon we could work together. We've got some ideas on how software can help grow your business.
 
-Here's the deal:
-- We'll create a custom landing page for your followers
-- You get 20% commission on any referrals
-- Plus a free website/app for your own brand if you want one
+Let's have a chat?
 
-Some of our recent work: {recentProjectExample}
-
-Interested in chatting about how we could work together?
-
-Best,
+Cheers,
 Handy
-@handylabs.live`,
+handylabs.live`,
     category: 'influencer',
-    variables: ['ownerName', 'instagramHandle', 'contentTheme', 'recentProjectExample'],
+    variables: ['businessName', 'ownerName'],
   },
   {
     id: 'smb-initial',
     name: 'SMB Initial Outreach',
-    subject: 'Quick idea to boost {businessName} online presence',
+    subject: 'Software idea for {businessName}',
     body: `Hi {ownerName},
 
-I came across {businessName} and noticed you're doing amazing things in {businessCategory}!
+I'm Handy from HandyLabs.live - we build software for Australian businesses.
 
-I help Melbourne businesses like yours level up their digital presence. Recently helped {similarBusiness} increase their online bookings by 40% with a custom booking system.
+Found {businessName} and reckon we could help improve your operations. We've identified key areas where software can streamline things for your business.
 
-For {businessName}, I'm thinking:
-{customIdea1}
-{customIdea2}
-{customIdea3}
+Let's have a chat?
 
-Would you be open to a 15-min call to explore if this could work for you?
-
-I'm based in Melbourne and understand the local market - happy to meet in person too.
-
-Best regards,
-Handy Hasan
-Founder, HandyLabs
-handyhasan@handylabs.live
+Cheers,
+Handy
 handylabs.live`,
     category: 'smb',
-    variables: ['businessName', 'ownerName', 'businessCategory', 'similarBusiness', 'customIdea1', 'customIdea2', 'customIdea3'],
+    variables: ['businessName', 'ownerName'],
   },
   {
     id: 'follow-up-1',
@@ -98,52 +77,38 @@ Handy`,
   {
     id: 'generic-initial',
     name: 'Generic Business Outreach',
-    subject: 'Helping {businessName} grow digitally in {city}',
+    subject: 'Software idea for {businessName}',
     body: `Hi {ownerName},
 
-I discovered {businessName} while researching successful {category} businesses in {city}.
+I'm Handy from HandyLabs.live - we build software for Australian businesses.
 
-At HandyLabs, we specialize in creating custom digital solutions for Australian businesses. Whether it's:
-- A mobile app for customer engagement
-- An automated booking system
-- A modern website that converts visitors to customers
-- AI-powered tools to streamline operations
+Found {businessName} and reckon we could help improve your operations. We've identified key areas where software can streamline things for your business.
 
-We've helped dozens of {city} businesses like yours increase their revenue and reduce operational headaches.
+Let's have a chat?
 
-Would you be interested in a brief chat about how we could help {businessName} achieve similar results?
-
-Best regards,
-Handy Hasan
-Founder, HandyLabs
-handyhasan@handylabs.live
+Cheers,
+Handy
 handylabs.live`,
     category: 'general',
-    variables: ['businessName', 'ownerName', 'category', 'city'],
+    variables: ['businessName', 'ownerName'],
   },
   {
     id: 'recruiter-initial',
     name: 'Recruiter Outreach',
-    subject: 'Streamline {businessName} hiring process with AI',
+    subject: 'Software idea for {businessName}',
     body: `Hi {ownerName},
 
-I noticed {businessName} is actively helping companies find talent in {city}. 
+I'm Handy from HandyLabs.live - we build software for Australian businesses.
 
-We've built AI-powered recruitment tools that help agencies like yours:
-- Automate candidate screening (save 10+ hours/week)
-- Create custom applicant tracking systems
-- Build branded career portals for clients
-- Generate personalized outreach at scale
+Found {businessName} and reckon we could help improve your operations. We've identified key areas where software can streamline things for your business.
 
-Recently helped a Sydney recruitment firm reduce time-to-fill by 40% while improving candidate quality.
+Let's have a chat?
 
-Worth a quick chat to explore how we could help {businessName} place more candidates, faster?
-
-Best,
-Handy Hasan
-HandyLabs.live`,
+Cheers,
+Handy
+handylabs.live`,
     category: 'recruiter',
-    variables: ['businessName', 'ownerName', 'city'],
+    variables: ['businessName', 'ownerName'],
   },
 ];
 

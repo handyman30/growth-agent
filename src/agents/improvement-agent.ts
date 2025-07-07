@@ -197,6 +197,31 @@ class ImprovementAgent {
       });
     }
     
+    // Airtable field compatibility improvements
+    if (this.analysis!.recentErrors.some(e => e.includes('INVALID_VALUE_FOR_COLUMN'))) {
+      suggestions.push({
+        id: `airtable-${Date.now()}`,
+        type: 'bugfix',
+        priority: 'high',
+        title: 'Fix Airtable Field Compatibility Issues',
+        description: 'Resolve date format and field validation issues with Airtable',
+        rationale: 'Recent errors show Airtable field compatibility issues that need fixing',
+        estimatedImpact: 'Eliminate data update errors and improve reliability',
+        implementation: `
+1. Add field validation before updates
+2. Implement fallback date formats
+3. Add error recovery mechanisms
+4. Create field mapping configuration
+        `,
+        filesToModify: [
+          'src/utils/airtable.ts',
+          'src/types/index.ts'
+        ],
+        createdAt: new Date(),
+        status: 'pending'
+      });
+    }
+    
     // Instagram DM automation
     suggestions.push({
       id: `instagram-${Date.now()}`,

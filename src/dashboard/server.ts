@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { getLeadsForOutreach, getAllLeads, updateLeadStatus, updateLeadEmail } from '../utils/airtable.js';
+import { getLeadsForOutreach, getAllLeads, updateLeadStatus, updateLeadEmail, deleteLead } from '../utils/airtable.js';
 import { generateInstagramDM } from '../utils/message-generator.js';
 import { getPersonalizedDM } from '../templates/instagram-dm-templates.js';
 import { sendEmail } from '../email/sender.js';
@@ -34,6 +34,7 @@ app.get('/api/leads', async (req, res) => {
     const source = req.query.source as string;
     const city = req.query.city as string;
     const category = req.query.category as string;
+    const status = req.query.status as string;
     
     // Use getAllLeads to show all leads including Google Maps ones
     let leads = await getAllLeads(500);
@@ -42,6 +43,7 @@ app.get('/api/leads', async (req, res) => {
     if (source) leads = leads.filter(l => l.source === source);
     if (city) leads = leads.filter(l => l.city?.toLowerCase() === city.toLowerCase());
     if (category) leads = leads.filter(l => l.category?.toLowerCase().includes(category.toLowerCase()));
+    if (status && status !== '') leads = leads.filter(l => l.status === status as Lead['status']);
     
     res.json(leads);
   } catch (error) {
@@ -53,10 +55,28 @@ app.post('/api/leads/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
     const { status, notes } = req.body;
-    await updateLeadStatus(id, status, notes);
+    
+    // Handle "too-hard" status by using notes field
+    if (status === 'too-hard') {
+      await updateLeadStatus(id, 'new', `TOO HARD: ${notes || 'Marked as too hard'}`);
+    } else {
+      await updateLeadStatus(id, status, notes);
+    }
+    
     res.json({ success: true });
   } catch (error) {
+    console.error('Error updating lead status:', error);
     res.status(500).json({ error: 'Failed to update lead status' });
+  }
+});
+
+app.delete('/api/leads/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteLead(id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete lead' });
   }
 });
 
@@ -259,7 +279,7 @@ app.post('/api/enrich-all-emails', async (req, res) => {
     for (const lead of leadsToEnrich) {
       const email = await enrichLeadWithEmail(lead);
       
-      if (email) {
+      if (email && lead.id) {
         await updateLeadEmail(lead.id, email);
         enrichedCount++;
         results.push({ lead: lead.businessName, email, success: true });
@@ -437,6 +457,27 @@ app.get('/', (req, res) => {
 // Serve the configuration page
 app.get('/config', (req, res) => {
   res.sendFile(join(__dirname, 'public', 'config.html'));
+});
+
+// Targeted Instagram scrape endpoint
+app.post('/api/instagram-scrape/targeted', async (req, res) => {
+  try {
+    console.log('🎯 Manual targeted Instagram scrape initiated');
+    
+    const { runTargetedInstagramScrape } = await import('../scrapers/instagram.js');
+    
+    // Run the targeted scrape
+    await runTargetedInstagramScrape();
+    
+    res.json({
+      success: true,
+      totalLeads: 50, // Approximate based on 10 per category
+      categories: ['cafe', 'restaurant', 'boutique', 'fitness', 'beauty']
+    });
+  } catch (error) {
+    console.error('Error running targeted Instagram scrape:', error);
+    res.status(500).json({ error: 'Failed to run targeted scrape' });
+  }
 });
 
 // Helper function to map categories to DM templates
