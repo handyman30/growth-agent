@@ -1,0 +1,88 @@
+{
+  "analysis": {
+    "totalLeads": 147,
+    "leadsWithEmails": 2,
+    "emailSuccessRate": 1.3605442176870748,
+    "scrapingSuccessRate": 95,
+    "activeConfigs": 8,
+    "systemHealth": "healthy",
+    "recentErrors": [],
+    "performanceMetrics": {
+      "avgResponseTime": 200,
+      "errorRate": 0,
+      "successRate": 1.3605442176870748
+    }
+  },
+  "suggestions": [
+    {
+      "id": "email-1751846608916",
+      "type": "feature",
+      "priority": "high",
+      "title": "Enhance Email Enrichment Strategy",
+      "description": "Implement multiple email finder services and website scraping to increase email success rate",
+      "rationale": "Current email success rate is 1.4%. Need to improve to reach target of 50%+",
+      "estimatedImpact": "Increase email success rate by 20-30%",
+      "implementation": "\n1. Add Apollo.io API integration\n2. Implement website email scraping with better patterns\n3. Add email verification service\n4. Create fallback strategies for failed enrichments\n        ",
+      "filesToModify": [
+        "src/utils/email-enrichment.ts",
+        "src/dashboard/server.ts",
+        "src/types/index.ts"
+      ],
+      "createdAt": "2025-07-07T00:03:28.916Z",
+      "status": "pending"
+    },
+    {
+      "id": "ux-1751846608916",
+      "type": "ux",
+      "priority": "medium",
+      "title": "Add Advanced Lead Filtering and Search",
+      "description": "Implement advanced filtering, search, and bulk operations for better lead management",
+      "rationale": "Managing 147 leads requires better organization tools",
+      "estimatedImpact": "Improve lead management efficiency by 40%",
+      "implementation": "\n1. Add search functionality\n2. Implement multi-select and bulk operations\n3. Add lead scoring and prioritization\n4. Create saved filters and views\n        ",
+      "filesToModify": [
+        "src/dashboard/public/index.html",
+        "src/dashboard/server.ts",
+        "src/utils/airtable.ts"
+      ],
+      "createdAt": "2025-07-07T00:03:28.916Z",
+      "status": "pending"
+    },
+    {
+      "id": "automation-1751846608916",
+      "type": "feature",
+      "priority": "high",
+      "title": "Implement Email Sequence Automation",
+      "description": "Create automated email sequences with follow-ups and personalization",
+      "rationale": "Single emails have low response rates. Sequences can improve engagement by 300%",
+      "estimatedImpact": "Increase response rate by 200-300%",
+      "implementation": "\n1. Create email sequence templates\n2. Add sequence scheduling logic\n3. Implement response tracking\n4. Add sequence management UI\n      ",
+      "filesToModify": [
+        "src/templates/email-templates.ts",
+        "src/email/sender.ts",
+        "src/dashboard/public/index.html",
+        "src/types/index.ts"
+      ],
+      "createdAt": "2025-07-07T00:03:28.916Z",
+      "status": "pending"
+    },
+    {
+      "id": "instagram-1751846608916",
+      "type": "feature",
+      "priority": "medium",
+      "title": "Add Instagram DM Automation",
+      "description": "Automate Instagram direct messages for leads without email addresses",
+      "rationale": "Instagram leads often don't have emails. DMs can reach them directly",
+      "estimatedImpact": "Reach 40% more leads through Instagram DMs",
+      "implementation": "\n1. Integrate Instagram Graph API\n2. Create DM templates\n3. Add DM scheduling and automation\n4. Implement DM response tracking\n      ",
+      "filesToModify": [
+        "src/utils/instagram-dm.ts",
+        "src/templates/instagram-dm-templates.ts",
+        "src/dashboard/public/index.html"
+      ],
+      "createdAt": "2025-07-07T00:03:28.916Z",
+      "status": "pending"
+    }
+  ],
+  "generatedAt": "2025-07-07T00:03:28.916Z"
+}

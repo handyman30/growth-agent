@@ -1,0 +1,133 @@
+# HandyLabs Growth Agent - Cursor Rules
+
+## Project Overview
+This is a lead generation and outreach automation system that:
+- Scrapes leads from Instagram and Google Maps using Apify
+- Enriches leads with emails using Hunter.io
+- Sends personalized outreach emails via SendGrid
+- Provides a web dashboard for management
+- Integrates with Airtable for data storage
+
+## Tech Stack
+- **Backend**: Node.js + TypeScript + Express
+- **Scraping**: Apify API (Instagram & Google Maps)
+- **Email**: SendGrid + Hunter.io for enrichment
+- **Database**: Airtable
+- **Frontend**: Vanilla HTML/CSS/JS dashboard
+- **Deployment**: Railway (configured)
+
+## Key Files & Structure
+```
+src/
+├── dashboard/          # Web dashboard (server + frontend)
+├── scrapers/          # Instagram & Google Maps scrapers
+├── email/             # SendGrid email sending
+├── utils/             # Shared utilities
+├── templates/         # Email & DM templates
+└── types/             # TypeScript type definitions
+```
+
+## Development Guidelines
+
+### Code Style
+- Use TypeScript for all new code
+- Follow existing naming conventions (camelCase for variables, PascalCase for classes)
+- Add JSDoc comments for complex functions
+- Use descriptive variable names
+
+### Error Handling
+- Always wrap API calls in try-catch blocks
+- Log errors with context (service name, operation)
+- Use the existing error handler utilities
+- Don't let errors crash the application
+
+### Environment Variables
+Required in `.env`:
+- `SENDGRID_API_KEY` - For email sending
+- `AIRTABLE_API_KEY` - For data storage
+- `APIFY_API_TOKEN` - For scraping
+- `HUNTER_API_KEY` - For email enrichment
+- `OPENAI_API_KEY` - For message generation
+
+### API Patterns
+- Use consistent response formats: `{ success: boolean, data?: any, error?: string }`
+- Add proper HTTP status codes
+- Include error messages for debugging
+
+### Database (Airtable)
+- Always check for duplicates before saving
+- Use the existing `saveLeadsToAirtable()` function
+- Handle rate limits gracefully
+- Log all database operations
+
+## Common Tasks
+
+### Adding New Scrapers
+1. Create new file in `src/scrapers/`
+2. Follow the pattern of existing scrapers
+3. Add to the main scraping orchestration
+4. Update types if needed
+
+### Adding Email Templates
+1. Add template to `src/templates/email-templates.ts`
+2. Use the existing template structure
+3. Test with the dashboard
+
+### Dashboard Features
+1. Add API endpoint in `src/dashboard/server.ts`
+2. Update frontend in `src/dashboard/public/`
+3. Follow existing UI patterns
+4. Add proper error handling
+
+### Environment Setup
+1. Copy `env.example` to `.env`
+2. Fill in all required API keys
+3. Test each service individually
+4. Use the test scripts in `src/utils/`
+
+## Testing
+- Use the existing test scripts: `npm run test:google`, `npm run test:instagram`
+- Test email sending with `src/utils/test-sendgrid.ts`
+- Check Hunter.io credits before bulk operations
+- Verify Airtable field names match code
+
+## Deployment
+- Uses Railway for hosting
+- Configured in `railway.json` and `nixpacks.toml`
+- Environment variables must be set in Railway dashboard
+- Check `README-DEPLOYMENT.md` for details
+
+## Current Features
+✅ Instagram scraping via Apify
+✅ Google Maps scraping via Apify  
+✅ Email enrichment via Hunter.io
+✅ Email sending via SendGrid
+✅ Web dashboard for management
+✅ Manual & automated scraping
+✅ Duplicate detection
+✅ Lead status tracking
+
+## Planned Improvements
+- [ ] Email template personalization
+- [ ] Instagram DM automation
+- [ ] Lead scoring & prioritization
+- [ ] Analytics dashboard
+- [ ] Multi-language support
+- [ ] Advanced filtering
+- [ ] Email sequence automation
+- [ ] Integration with CRM systems
+
+## Debugging Tips
+- Check logs for API errors
+- Verify environment variables are set
+- Test individual services with utility scripts
+- Monitor Airtable for data consistency
+- Check SendGrid activity feed for email status
+- Use Hunter.io dashboard to monitor credits
+
+## Performance Considerations
+- Rate limit API calls (especially Hunter.io)
+- Batch operations where possible
+- Cache frequently accessed data
+- Monitor memory usage for large datasets
+- Use pagination for large result sets 
